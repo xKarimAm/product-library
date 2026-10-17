@@ -1,0 +1,1802 @@
+"""Product Library (was COC, Center of Claude). A local read-only mission control over every project
+you run Claude Code in.
+
+    py coc.py              # serve on http://127.0.0.1:7777
+    py coc.py --selftest    # assert-based checks, no server, no network
+
+WHY THIS READS TWO SOURCES. Claude Code already keeps a registry at
+~/.claude/projects/<slug>/, so the project list does not need to be invented -
+only read. But the slug is LOSSY (`D--Project-Alpha-research` is ambiguous between
+`D:\\Project Alpha\\research` and `D:\\Project Alpha research`), so the real path is taken
+from the `cwd` field inside a transcript record and NEVER derived from the slug.
+The second source is the project folder itself: `.claude/session-state.md`
+carries curated frontmatter whose `next_action` is literally "where I left off".
+
+WHY read-only. It reads 57 MB of irreplaceable transcript history. There is no
+code path here that writes, moves or deletes anything under a project folder.
+
+ponytail: stdlib only - no FastAPI, so nothing is pip-installed into the
+Microsoft Store python alias (which has known venv/PATH quirks on this box).
+The in-house precedent is D:\\Project Beta\\server.py, same shape.
+"""
+import http.server
+import json
+import os
+import re
+import secrets
+import shutil
+import subprocess
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+
+HOST = "127.0.0.1"
+PORT = int(os.environ.get("COC_PORT", "7777"))
+HERE = os.path.dirname(os.path.abspath(__file__))
+# COC_REGISTRY points the scan at another registry, e.g. demo/make_demo.py's
+# fake one, so a demo never mixes with (or writes near) the real ~/.claude.
+REGISTRY = os.environ.get("COC_REGISTRY") or os.path.join(os.path.expanduser("~"), ".claude", "projects")
+PLANS_DIR = os.path.join(os.path.expanduser("~"), ".claude", "plans")
+
+# Folders the registry cannot know about, because a registry entry only exists
+# once Claude has actually been run there. Empty by default: machine-specific
+# paths never belong in the repo. Set COC_EXTRA_ROOTS to a list separated by
+# os.pathsep (";" on Windows), e.g. COC_EXTRA_ROOTS="D:\work\a;D:\work\b".
+# An empty value also means none (the demo uses that).
+EXTRA_ROOTS = []
+# Missing folders are skipped by scan(), so a wrong path costs nothing.
+if os.environ.get("COC_EXTRA_ROOTS") is not None:
+    EXTRA_ROOTS = [p for p in os.environ["COC_EXTRA_ROOTS"].split(os.pathsep) if p.strip()]
+
+# Files worth showing, in the order they are trusted. session-state.md first
+# because its frontmatter is curated; the append-only logs are big and are
+# TAILED, never read whole.
+STATE_FILE = os.path.join(".claude", "session-state.md")
+APPEND_LOGS = ("HANDOFF.md", "PROJECT.md")
+OTHER_FILES = ("CLAUDE.md", "README.md", "RUNBOOK.md", "Zeta.md")
+
+# A prompt that says nothing about where you left off. Project Beta's actual
+# last prompt is "continue", which is why this list exists.
+STOPLIST = {
+    "continue", "ok", "okay", "yes", "y", "no", "go", "go on", "proceed",
+    "sure", "thanks", "thank you", "next", "done", "k", "yep", "yeah",
+    "carry on", "keep going",
+}
+MIN_PROMPT_CHARS = 12
+MIN_JSONL_BYTES = 200
+TAIL_BYTES = 512 * 1024   # enough to hold many records, O(1) instead of O(file)
+HEAD_BYTES = 256 * 1024   # cwd sits on the first attachment record
+
+_cache = {}   # (kind, path, mtime, size) -> parsed value
+_scan_cache = {"at": 0.0, "data": None}
+
+
+# ---------------------------------------------------------------- file reading
+
+def _stat_key(kind, path):
+    """Cache identity for a file: nanosecond mtime plus size.
+
+    st_mtime truncated to a whole second missed an edit made inside the same
+    second at identical length - e.g. flipping `status: paused` to `status:
+    active`. st_mtime_ns does not.
+    """
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (kind, os.path.normcase(path), st.st_mtime_ns, st.st_size)
+
+
+def read_text(path, limit=None):
+    """UTF-8 with replacement, ALWAYS explicit, and BOM-tolerant.
+
+    Python's open() defaults to the locale codec on Windows (cp1252 here). This
+    corpus contains em dashes and Arabic; reading it as cp1252 produces mojibake
+    at best and UnicodeDecodeError at worst. Verified live before writing this.
+
+    utf-8-sig rather than utf-8 because a BOM - which plenty of Windows editors
+    write - would otherwise leave the first line as "﻿---" and make the
+    whole frontmatter parse silently return nothing.
+    """
+    with open(path, "r", encoding="utf-8-sig", errors="replace") as fh:
+        return fh.read() if limit is None else fh.read(limit)
+
+
+def tail_text(path, nbytes=TAIL_BYTES):
+    """Last nbytes of a file, decoded, first (possibly partial) line dropped."""
+    size = os.path.getsize(path)
+    with open(path, "rb") as fh:
+        if size > nbytes:
+            fh.seek(size - nbytes)
+            raw = fh.read()
+            nl = raw.find(b"\n")
+            raw = raw[nl + 1:] if nl != -1 else raw
+        else:
+            raw = fh.read()
+    return raw.decode("utf-8", errors="replace")
+
+
+def tail_lines(path, n):
+    return tail_text(path).splitlines()[-n:]
+
+
+# --------------------------------------------------------- transcript scanning
+
+def _jsonl_lines(text):
+    for line in text.splitlines():
+        if len(line) < 2:
+            continue
+        try:
+            yield json.loads(line)
+        except (ValueError, TypeError):
+            continue
+
+
+def resolve_cwd(jsonl_path):
+    """The project's real path, from the first record that carries `cwd`.
+
+    NOT line 1: line 1 is a `queue-operation` record with no cwd. Verified on
+    every transcript on this machine - cwd first appears on an `attachment`
+    record at line 2-4, and carries gitBranch alongside it.
+    """
+    key = _stat_key("cwd", jsonl_path)
+    if key and key in _cache:
+        return _cache[key]
+    out = (None, None)
+    try:
+        head = read_text(jsonl_path, HEAD_BYTES)
+    except OSError:
+        return out
+    for rec in _jsonl_lines(head):
+        cwd = rec.get("cwd")
+        if cwd:
+            out = (cwd, rec.get("gitBranch") or None)
+            break
+    if key:
+        _cache[key] = out
+    return out
+
+
+def resolve_project(tx):
+    """(path, branch) from the newest transcript that actually carries a `cwd`.
+
+    Trying only the newest file made a project unresolvable whenever that one
+    session happened not to record a cwd, even though an older transcript did.
+    """
+    for _mtime, _size, path in tx:
+        cwd, branch = resolve_cwd(path)
+        if cwd:
+            return cwd, branch
+    return None, None
+
+
+def _prompts_in(jsonl_path, full=False):
+    """last-prompt values from this transcript, oldest to newest.
+
+    Tails the file rather than streaming it: a 7 MB transcript should not cost
+    7 MB of reads to answer "what was the last thing said".
+
+    `full` reads the whole file. It exists because the tail window cuts the file
+    mid-line, and the record straddling that cut is discarded - so a substantive
+    prompt can be lost while a later "continue" survives. The caller escalates
+    to a full read when everything the window returned was trivial.
+    """
+    key = _stat_key("prompts-full" if full else "prompts", jsonl_path)
+    if key and key in _cache:
+        return _cache[key]
+    try:
+        text = read_text(jsonl_path) if full else tail_text(jsonl_path)
+    except OSError:
+        return []
+    found = [rec["lastPrompt"] for rec in _jsonl_lines(text)
+             if rec.get("type") == "last-prompt" and rec.get("lastPrompt")]
+    if not found and not full and os.path.getsize(jsonl_path) > TAIL_BYTES:
+        return _prompts_in(jsonl_path, full=True)
+    # De-dup consecutive repeats: last-prompt is written repeatedly per session.
+    out = [p for i, p in enumerate(found) if i == 0 or p != found[i - 1]]
+    if key:
+        _cache[key] = out
+    return out
+
+
+def truncated_tail(jsonl_path):
+    """Is this file big enough that tailing it could have cut a record?"""
+    try:
+        return os.path.getsize(jsonl_path) > TAIL_BYTES
+    except OSError:
+        return False
+
+
+def is_substantive(prompt):
+    flat = " ".join(prompt.split()).strip().lower().rstrip(".!?")
+    return len(flat) >= MIN_PROMPT_CHARS and flat not in STOPLIST
+
+
+def transcripts(slug_dir):
+    """.jsonl files in a registry dir, newest first.
+
+    Non-recursive on purpose: the UUID subdirectories were checked and contain
+    ZERO .jsonl files, so recursing buys nothing and costs a walk.
+    """
+    out = []
+    try:
+        for name in os.listdir(slug_dir):
+            if not name.endswith(".jsonl"):
+                continue
+            p = os.path.join(slug_dir, name)
+            try:
+                st = os.stat(p)
+            except OSError:
+                continue
+            out.append((st.st_mtime, st.st_size, p))
+    except OSError:
+        return []
+    out.sort(reverse=True)
+    return out
+
+
+def last_prompts(slug_dir):
+    """(prompts, session_id, trivial_only) - walks transcripts newest-first
+    until one YIELDS a prompt.
+
+    Stopping at the newest file is the bug this avoids: Project Beta's newest
+    transcript is 15 KB and holds no prompt, while the session that matters is a
+    7.2 MB file from earlier the same day. Verified by test.
+    """
+    for _mtime, size, path in transcripts(slug_dir):
+        if size < MIN_JSONL_BYTES:
+            continue
+        prompts = _prompts_in(path)
+        if not prompts:
+            continue
+        session_id = os.path.splitext(os.path.basename(path))[0]
+        good = [p for p in prompts if is_substantive(p)]
+        if not good and truncated_tail(path):
+            # Everything in the tail window was filler. The one line the window
+            # cut in half may have been the real prompt, so pay for a full read
+            # rather than reporting "continue" as the state of the project.
+            prompts = _prompts_in(path, full=True) or prompts
+            good = [p for p in prompts if is_substantive(p)]
+        if good:
+            return good[-3:], session_id, False
+        return prompts[-1:], session_id, True
+    return [], None, False
+
+
+# ------------------------------------------------------------ project folder
+
+# stage and proof are written by skills/coc-checkpoint; the rest predate it.
+FM_SCALARS = ("status", "stage", "last_updated", "current_task", "next_action", "proof")
+
+
+BLOCK_SCALARS = (">", "|", ">-", "|-", ">+", "|+")
+# Trailing \b matters: without it "## Resumed the OCR pipeline yesterday" counts
+# as the resume heading, and since the FIRST match wins it beats the real one.
+RESUME_RE = re.compile(r"^#{1,4}\s.*\b(RESUME|NEXT ACTION|NEXT STEP|PICK UP)\b", re.I)
+UPDATED_RE = re.compile(r"\*\*Updated:\*\*\s*([0-9]{4}-[0-9]{2}-[0-9]{2})")
+
+
+def _unquote(val):
+    val = val.strip()
+    if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+        return val[1:-1]
+    return val
+
+
+def parse_frontmatter(text):
+    """Reader for session-state.md frontmatter, which comes in THREE real shapes.
+
+    ponytail: stdlib has no YAML and pulling one in for five known keys is a
+    dependency for nothing - but the shapes below are what the files on this
+    machine actually contain, verified by reading them, so all three are handled:
+
+      Project Alpha / Project Epsilon:  status: paused
+                                    blockers: ["a", "b"]        <- inline JSON
+      Project Beta:                status: >                   <- block scalar
+                                      folded text continues
+                                    blockers:                   <- block sequence
+                                      - "a"
+
+    `raw` is always returned, so a shape nobody anticipated still shows the block
+    verbatim rather than raising or silently rendering an empty panel.
+    """
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    # The terminator must sit at column 0. Matching a *stripped* "---" let an
+    # indented horizontal rule inside a block scalar end the frontmatter early,
+    # truncating that value and hiding every key after it.
+    end = next((i for i in range(1, len(lines)) if lines[i].rstrip() == "---"), None)
+    if end is None:
+        return None
+    body = lines[1:end]
+    out = {"raw": "\n".join(body), "blockers": [], "format": "frontmatter"}
+
+    i = 0
+    while i < len(body):
+        m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$", body[i])
+        if not m:
+            i += 1
+            continue
+        key, val = m.group(1), m.group(2).strip()
+        i += 1
+
+        if val in BLOCK_SCALARS:
+            chunk = []
+            while i < len(body) and (not body[i].strip() or body[i][:1].isspace()):
+                chunk.append(body[i].strip())
+                i += 1
+            # '>' folds newlines into spaces, '|' keeps them. Either way the
+            # continuation lines ARE the value, not the '>' marker.
+            if val[0] == "|":
+                val = "\n".join(chunk).strip()
+            else:
+                val = " ".join(c for c in chunk if c).strip()
+        elif val[:1] in ("\"", "'") and not _closed(val):
+            # A quoted scalar wrapped onto following lines. Without this the
+            # value came back as the first line WITH its opening quote still on.
+            parts = [val]
+            while i < len(body) and not _closed(" ".join(parts)):
+                parts.append(body[i].strip())
+                i += 1
+            val = " ".join(parts)
+        elif val == "":
+            items = []
+            while i < len(body):
+                # Sequence dashes at column 0 are valid YAML and common, so the
+                # leading-whitespace requirement here silently produced [].
+                seq = re.match(r"^\s*-\s+(.*)$", body[i])
+                if seq:
+                    items.append(_unquote(seq.group(1)))
+                    i += 1
+                elif not body[i].strip():
+                    i += 1
+                else:
+                    break
+            if items:
+                if key == "blockers":
+                    out["blockers"] = items
+                elif key in FM_SCALARS:
+                    out[key] = " · ".join(items)
+                continue
+
+        if key == "blockers":
+            out["blockers"] = _as_list(val)
+        elif key in FM_SCALARS:
+            out[key] = _unquote(val)
+    return out
+
+
+def _closed(val):
+    """Does this quoted scalar have its closing quote yet?"""
+    q = val[:1]
+    return q in ("\"", "'") and len(val) >= 2 and val.rstrip().endswith(q)
+
+
+def _as_list(val):
+    """`blockers:` as a JSON value - list only.
+
+    Anything non-list means "no blockers stated", not "one blocker". Wrapping
+    it invented a blocker: `blockers: null` became ['None'] and `{}` became
+    ['{}'], each showing a phantom count of 1 on the card.
+    """
+    val = val.strip()
+    if not val or val.lower() in ("null", "~", "none", "[]", "{}"):
+        return []
+    try:
+        parsed = json.loads(val)
+    except (ValueError, TypeError):
+        return [val]
+    if isinstance(parsed, list):
+        return [str(x) for x in parsed if str(x).strip()]
+    return []
+
+
+def parse_plain_state(text):
+    """Fallback for a session-state.md with no frontmatter at all.
+
+    Project Gamma's is a plain markdown doc whose resume point is a
+    '## RESUME HERE - next actions' section. Without this it scanned as having no
+    state despite being 13 KB of exactly the state we want.
+    """
+    lines = text.splitlines()
+    start = next((i for i, l in enumerate(lines) if RESUME_RE.match(l)), None)
+    if start is None:
+        return None
+    chunk = []
+    fence = False
+    for line in lines[start + 1:]:
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        # A '# comment' inside a fenced shell block is not a heading; without
+        # this the section stopped at the first line of any code sample.
+        elif not fence and re.match(r"^#{1,4}\s", line):
+            break
+        chunk.append(line)
+    body = "\n".join(chunk).strip()
+    if not body:
+        return None
+    # The newest stamp, not the first one in the file - a changelog row near the
+    # top would otherwise date the project months earlier than it is.
+    stamps = UPDATED_RE.findall(text)
+    return {
+        "raw": body[:4000],
+        "format": "plain",
+        "status": None,
+        "last_updated": max(stamps) if stamps else None,
+        "current_task": lines[start].lstrip("#").strip(),
+        "next_action": body[:1500],
+        "blockers": [],
+    }
+
+
+def open_blockers(blockers):
+    """Entries already marked DONE are not outstanding."""
+    return [str(b) for b in blockers
+            if not str(b).lstrip().upper().startswith("DONE")]
+
+
+# Whose decisions count as "waiting on you". Set COC_OWNER to the name you
+# write in blockers (e.g. "Sam" for "Sam [S]: ..."); the default is "Me".
+OWNER = os.environ.get("COC_OWNER") or "Me"
+
+
+def waiting_on_me(blockers):
+    """Blockers that are yours to clear: they start with OWNER, as in the
+    'Me [M]:' prefix the checkpoint skill writes."""
+    return [b for b in open_blockers(blockers)
+            if re.match(r"^\s*%s\b" % re.escape(OWNER), b, re.I)]
+
+
+# ------------------------------------------------- drift and the readiness gate
+#
+# Both are ported from Product Harness. There, a grade is stamped with a hash of
+# the evidence it saw and goes stale the moment that evidence changes. Here the
+# "grade" is session-state.md and the evidence is the work itself: a transcript
+# or a commit newer than the last state write means next_action may describe a
+# point the project has already moved past.
+
+# The session that writes the state keeps writing its own transcript for a while
+# afterwards, so "newer at all" would flag every project that just checkpointed.
+# ponytail: one global grace; a per-project allowance if long tails misfire.
+# COC_DRIFT_GRACE (seconds) exists for the live demo, which needs a commit to
+# flip a project to STALE in seconds rather than an hour.
+DRIFT_GRACE = int(os.environ.get("COC_DRIFT_GRACE", "3600"))
+
+
+def drift(state_at, activity):
+    """None, or how far the newest work is ahead of the last state write.
+
+    `activity` is (epoch_seconds | None, source) pairs. Mtime of the state file
+    rather than its `last_updated` field: the field is hand-typed and often not
+    bumped, the mtime moves on every save.
+    """
+    if state_at is None:
+        return None
+    newer = [(ts, src) for ts, src in activity
+             if ts is not None and ts - state_at > DRIFT_GRACE]
+    if not newer:
+        return None
+    ts, src = max(newer)
+    return {"by": src, "state_at": _iso(state_at), "activity_at": _iso(ts),
+            "behind_hours": round((ts - state_at) / 3600, 1)}
+
+
+def _epoch(iso):
+    try:
+        return datetime.fromisoformat(iso).timestamp()
+    except (TypeError, ValueError):
+        return None
+
+
+# 'Me [M]:' / 'Sam [A]:' - the owner prefix the frontmatter already uses.
+OWNER_RE = re.compile(r"^\s*[^:\[\]\n]{1,40}\[[^\]\n]{1,8}\]\s*:")
+
+
+def _has_proof(proof):
+    """The skill's placeholder for 'nothing verified yet' is not proof."""
+    p = (proof or "").strip()
+    return bool(p) and not p.lower().startswith("none yet")
+
+
+def gate(rec):
+    """Harness's verdictFor, with deterministic checks instead of a model.
+
+    A hard failure fails the gate; a soft one is reported as a gap and does
+    not. Hard gaps are listed first so `next` is always the question that is
+    actually blocking. Without a state file the other checks have nothing to
+    inspect, so they are not reported as separate failures.
+    """
+    st = rec.get("state")
+    checks = [("has_state", True,
+               "Is there a .claude/session-state.md saying where you left off?",
+               bool(st))]
+    if st:
+        checks += [
+            ("next_action", True,
+             "Is next_action a concrete step rather than filler?",
+             is_substantive(st.get("next_action") or "")),
+            ("fresh", True,
+             "Was the state rewritten after the latest work?",
+             not rec.get("drift")),
+            ("blockers_owned", False,
+             "Does every open blocker name who clears it?",
+             all(OWNER_RE.match(b) for b in open_blockers(rec.get("blockers") or []))),
+            ("proof", False,
+             "Is there proof the last step worked?",
+             _has_proof(st.get("proof"))),
+            ("proof_commit", False,
+             "The proof cites an unknown commit: does it exist in this repo?",
+             not rec.get("proof_unknown")),
+        ]
+    gaps = [{"id": cid, "hard": hard, "question": q}
+            for cid, hard, q, ok in checks if not ok]
+    return {"verdict": "fail" if any(g["hard"] for g in gaps) else "pass",
+            "gaps": gaps,
+            "next": gaps[0]["question"] if gaps else None}
+
+
+def read_state(path):
+    fp = os.path.join(path, STATE_FILE)
+    if not os.path.isfile(fp):
+        return None, None
+    key = _stat_key("state", fp)
+    if key and key in _cache:
+        return _cache[key], fp
+    # Frontmatter is at the head here - this file is NOT append-only.
+    txt = read_text(fp, HEAD_BYTES)
+    state = parse_frontmatter(txt) or parse_plain_state(txt)
+    if key:
+        _cache[key] = state
+    return state, fp
+
+
+def _last_heading(lines):
+    """The last real heading in these lines.
+
+    Fence-aware, because a template row inside a ``` block would otherwise be
+    reported as the newest entry. Accepts ## through ####, since an entry
+    written one level deeper was previously skipped in favour of an older ##.
+    """
+    fence = False
+    found = None
+    for line in lines:
+        if line.lstrip().startswith("```"):
+            fence = not fence
+            continue
+        if not fence and re.match(r"^#{2,4}\s", line):
+            found = line
+    return found
+
+
+def read_logs(path):
+    """Append-only logs, TAILED.
+
+    HANDOFF.md says so in its own header: 'Each session appends one entry at the
+    bottom'. Project Alpha's is 251 KB and its FIRST heading is 2026-05-31 - reading
+    the head would display four-month-old state as current.
+    """
+    out = []
+    for name in APPEND_LOGS:
+        fp = os.path.join(path, name)
+        if not os.path.isfile(fp):
+            continue
+        lines = tail_lines(fp, 400)
+        heading = _last_heading(lines)
+        out.append({
+            "name": name,
+            "size": os.path.getsize(fp),
+            "heading": heading,
+            "tail": "\n".join(lines[-60:]),
+        })
+    return out
+
+
+def list_files(path):
+    out = []
+    for name in (STATE_FILE,) + APPEND_LOGS + OTHER_FILES:
+        fp = os.path.join(path, name)
+        if not os.path.isfile(fp):
+            continue
+        st = os.stat(fp)
+        out.append({
+            "name": name.replace("\\", "/"),
+            "size": st.st_size,
+            "mtime": _iso(st.st_mtime),
+        })
+    return out
+
+
+def git_info(path):
+    """None when there is no repo - only 3 of the 10 real project folders have
+    one, so this is optional enrichment and never a required field."""
+    if not os.path.isdir(os.path.join(path, ".git")):
+        return None
+    git = shutil.which("git")
+    if not git:
+        return None
+
+    def run(args):
+        try:
+            # List-form args, never a shell string: 'D:\Project Beta' has a
+            # space in it and a shell string would split it into two paths.
+            r = subprocess.run([git, "-C", path] + args, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace",
+                               timeout=10)
+            return r.stdout.strip() if r.returncode == 0 else ""
+        except (OSError, subprocess.SubprocessError):
+            return ""
+
+    branch = run(["rev-parse", "--abbrev-ref", "HEAD"])
+    last = run(["log", "-1", "--format=%s\x1f%cI"])
+    subject, _, when = last.partition("\x1f")
+    status = run(["status", "--porcelain"])
+    return {
+        "branch": branch or None,
+        "subject": subject or None,
+        "committed": when or None,
+        "dirty": len([l for l in status.splitlines() if l.strip()]),
+    }
+
+
+PROOF_COMMIT_RE = re.compile(r"\bcommit\s+([0-9a-f]{7,40})\b", re.I)
+
+
+def unknown_commits(path, proof):
+    """Hashes the proof cites as 'commit <hash>' that this repo does not have.
+
+    Harness's citation check: evidence must exist, not just be quoted. With no
+    repo or no git there is nothing to ask, so nothing counts as unknown.
+    """
+    cited = PROOF_COMMIT_RE.findall(proof or "")
+    git = shutil.which("git")
+    if not cited or not git or not os.path.isdir(os.path.join(path, ".git")):
+        return []
+    missing = []
+    for h in cited:
+        try:
+            # ^{commit}: a tree or blob hash also passes a bare `cat-file -e`.
+            r = subprocess.run([git, "-C", path, "cat-file", "-e", h + "^{commit}"],
+                               capture_output=True, timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            continue   # git could not answer: unverified, not disproven
+        if r.returncode != 0:
+            missing.append(h)
+    return missing
+
+
+# -------------------------------------------------------------------- scanning
+
+def _iso(ts):
+    return datetime.fromtimestamp(ts, timezone.utc).astimezone().isoformat()
+
+
+def _slugify(path):
+    s = re.sub(r"[^A-Za-z0-9]+", "-", path).strip("-").lower()
+    return s or "root"
+
+
+def _display_name(path, slug):
+    base = os.path.basename(path.rstrip("\\/"))
+    if base:
+        return base
+    drive = os.path.splitdrive(path)[0]
+    return f"{drive}\\ (drive root)" if drive else slug
+
+
+def _build(path, slug, source, slug_dir=None, branch_hint=None):
+    exists = bool(path) and os.path.isdir(path)
+    rec = {
+        "id": slug,
+        "slug": slug,
+        "source": source,
+        "path": path,
+        "path_exists": exists,
+        "unresolved": not bool(path),
+        "missing": bool(path) and not exists,
+        "name": _display_name(path, slug) if path else _pretty_slug(slug),
+        "sessions": 0,
+        "bytes": 0,
+        "last_activity": None,
+        "prompts": [],
+        "prompt_trivial": False,
+        "session_id": None,
+        "state": None,
+        "state_file": None,
+        "blockers": [],
+        "waiting": [],
+        "logs": [],
+        "files": [],
+        "memory": None,
+        "git": None,
+        "note": None,
+        "drift": None,
+        "proof_unknown": [],
+        "gate": None,
+    }
+    newest_tx = None
+
+    if slug_dir:
+        tx = transcripts(slug_dir)
+        newest_tx = tx[0][0] if tx else None
+        rec["sessions"] = len(tx)
+        rec["bytes"] = sum(size for _m, size, _p in tx)
+        if tx:
+            rec["last_activity"] = _iso(tx[0][0])
+        prompts, session_id, trivial = last_prompts(slug_dir)
+        rec["prompts"] = prompts
+        rec["prompt_trivial"] = trivial
+        rec["session_id"] = session_id
+        mem = os.path.join(slug_dir, "memory", "MEMORY.md")
+        if os.path.isfile(mem):
+            rec["memory"] = read_text(mem, 20000)
+
+    if not path:
+        rec["note"] = ("No transcript, so the real path cannot be recovered - "
+                       "the registry slug is ambiguous by itself.")
+        return rec
+    if not exists:
+        rec["note"] = "Folder no longer exists at this path."
+        return rec
+
+    state, state_file = read_state(path)
+    if state:
+        rec["state"] = {k: state.get(k) for k in FM_SCALARS}
+        rec["state"]["raw"] = state.get("raw")
+        rec["state"]["format"] = state.get("format")
+        rec["blockers"] = state.get("blockers", [])
+        rec["waiting"] = waiting_on_me(rec["blockers"])
+        rec["state_file"] = state_file
+    rec["logs"] = read_logs(path)
+    rec["files"] = list_files(path)
+    rec["git"] = git_info(path) or (
+        {"branch": branch_hint, "subject": None, "committed": None, "dirty": None}
+        if branch_hint and branch_hint != "HEAD" else None)
+
+    if state_file:
+        try:
+            state_at = os.path.getmtime(state_file)
+        except OSError:
+            state_at = None
+        rec["drift"] = drift(state_at, [
+            (newest_tx, "transcript"),
+            (_epoch((rec["git"] or {}).get("committed")), "commit"),
+        ])
+        rec["proof_unknown"] = unknown_commits(path, (rec["state"] or {}).get("proof"))
+    rec["gate"] = gate(rec)
+
+    if not rec["last_activity"]:
+        newest = max((f["mtime"] for f in rec["files"]), default=None)
+        rec["last_activity"] = newest
+    if rec["session_id"] and rec["path"]:
+        # ';' not '&&' - '&&' is a parser error in Windows PowerShell 5.1.
+        rec["resume"] = f"cd '{rec['path']}' ; claude --resume {rec['session_id']}"
+    return rec
+
+
+def _pretty_slug(slug):
+    """Best-effort label for a project whose real path cannot be recovered.
+
+    Only used when there is no transcript to read `cwd` from. The leading drive
+    token is dropped because "D: Project Alpha research" reads worse than "Project Alpha
+    research", and the slug's separators are ambiguous anyway - which is exactly
+    why this is a label and never a path.
+    """
+    body = re.sub(r"^[A-Za-z]--+", "", slug)
+    return re.sub(r"-+", " ", body).strip() or slug
+
+
+SCAN_TTL = 2.0
+
+
+def scan(force=False):
+    """All projects, newest first.
+
+    Freshness over cleverness. The previous version keyed this cache on the
+    registry directories' own mtimes, which looks like an input signature but
+    is not one: on NTFS, appending to a transcript or rewriting a project's
+    session-state.md changes NO directory mtime, so a running server served its
+    first snapshot forever - reproduced with a fixture before this was changed.
+
+    A short TTL is correct by construction instead of by enumeration: the real
+    work is memoised per file on (path, mtime_ns, size), so a re-scan with
+    nothing changed costs a few directory listings.
+
+    ponytail: TTL over an exhaustive input signature - the set of inputs
+    includes files whose paths are only known after a scan, which is circular.
+    """
+    now = time.monotonic()
+    if (not force and _scan_cache["data"] is not None
+            and now - _scan_cache["at"] < SCAN_TTL):
+        return _scan_cache["data"]
+
+    def from_registry(slug):
+        slug_dir = os.path.join(REGISTRY, slug)
+        path, branch = resolve_project(transcripts(slug_dir))
+        return _build(path, slug, "registry", slug_dir=slug_dir, branch_hint=branch)
+
+    # Each _build waits on ~4 git subprocesses, and a wait releases the GIL: run
+    # one after another, 40 projects took 5s per scan. Threads, not processes,
+    # because _cache is shared. ponytail: fixed pool of 8; git_info caching keyed
+    # on .git/HEAD and index mtimes if hundreds of repos ever make this slow.
+    slugs = sorted(d for d in os.listdir(REGISTRY)
+                   if os.path.isdir(os.path.join(REGISTRY, d))) if os.path.isdir(REGISTRY) else []
+    with ThreadPoolExecutor(8) as pool:
+        out = list(pool.map(from_registry, slugs))
+
+    seen = {os.path.normcase(os.path.abspath(r["path"]))
+            for r in out if r["path"]}
+    for path in EXTRA_ROOTS:
+        norm = os.path.normcase(os.path.abspath(path))
+        if norm in seen or not os.path.isdir(path):
+            continue
+        seen.add(norm)
+        out.append(_build(path, _slugify(path), "extra"))
+
+    out.sort(key=lambda r: (r["last_activity"] or ""), reverse=True)
+    out = _dedupe(out)
+    _scan_cache.update(at=now, data=out)
+    return out
+
+
+def _dedupe(records):
+    """One card per real folder, and one id per card.
+
+    Two registry slugs can resolve to the same `cwd`; keeping both would show a
+    folder twice and make `/api/open` pick whichever came first. Ids are also
+    forced unique because `_slugify` collapses punctuation, so `D:\\A B` and
+    `D:\\A-B` both reduce to the same string - and a duplicate id means the
+    detail view and the launch button address the wrong project.
+    """
+    out, by_path, ids = [], set(), set()
+    for rec in records:                     # already newest-first
+        if rec["path"]:
+            norm = os.path.normcase(os.path.abspath(rec["path"]))
+            if norm in by_path:
+                continue
+            by_path.add(norm)
+        base, n = rec["id"], 2
+        while rec["id"] in ids:
+            rec["id"] = "%s-%d" % (base, n)
+            n += 1
+        ids.add(rec["id"])
+        out.append(rec)
+    return out
+
+
+LIGHT = ("id", "name", "path", "path_exists", "unresolved", "missing",
+         "source", "sessions", "bytes", "last_activity", "prompts",
+         "prompt_trivial", "note", "session_id")
+
+
+def light(rec):
+    """Canvas payload. Carries next_action and the waiting count so a bubble
+    opens instantly with no second fetch, but not the 60-line log tails."""
+    out = {k: rec[k] for k in LIGHT}
+    st = rec.get("state") or {}
+    # `status` is a single word in Project Alpha ("paused") but a 500-character folded
+    # paragraph in Project Beta. Only the short form can be a badge; the long
+    # form is a summary line, so the split happens here rather than in the UI.
+    raw = (st.get("status") or "").strip()
+    short = raw if raw and len(raw) <= 24 and "\n" not in raw else None
+    out["status"] = short
+    out["status_note"] = None if short else (raw or None)
+    out["last_updated"] = st.get("last_updated")
+    out["next_action"] = st.get("next_action")
+    # Same badge rule as status: only a short value can be a badge.
+    stage = (st.get("stage") or "").strip()
+    out["stage"] = stage if stage and len(stage) <= 24 and "\n" not in stage else None
+    out["proof"] = st.get("proof")
+    out["has_state"] = bool(rec.get("state"))
+    out["waiting_count"] = len(rec.get("waiting") or [])
+    out["blocker_count"] = len(rec.get("blockers") or [])
+    out["branch"] = (rec.get("git") or {}).get("branch")
+    out["dirty"] = (rec.get("git") or {}).get("dirty")
+    out["resume"] = rec.get("resume")
+    g = rec.get("gate") or {}
+    out["drift"] = bool(rec.get("drift"))
+    out["gate"] = g.get("verdict")
+    out["gate_next"] = g.get("next")
+    out["gap_count"] = len(g.get("gaps") or [])
+    return out
+
+
+def plans():
+    out = []
+    if not os.path.isdir(PLANS_DIR):
+        return out
+    for name in os.listdir(PLANS_DIR):
+        if not name.endswith(".md"):
+            continue
+        fp = os.path.join(PLANS_DIR, name)
+        try:
+            st = os.stat(fp)
+        except OSError:
+            continue
+        first = ""
+        for line in read_text(fp, 8000).splitlines():
+            if line.startswith("# "):
+                first = line[2:].strip()
+                break
+        out.append({"name": name, "title": first or name, "size": st.st_size,
+                    "mtime": _iso(st.st_mtime)})
+    out.sort(key=lambda p: p["mtime"], reverse=True)
+    return out
+
+
+# ---------------------------------------------------------------------- server
+
+# Two separate secrets. TOKEN authorises the launch; the CSP nonce is minted
+# per response, because a value reused on every response is not a nonce.
+TOKEN = secrets.token_urlsafe(24)
+ALLOWED_HOSTS = {f"{HOST}:{PORT}", f"localhost:{PORT}"}
+CLIENT_ROUTES = ("/", "/blocked", "/plans", "/report")
+MAX_BODY = 8192
+def _find_vscode(cands=None):
+    """Prefer Code.exe over code.cmd.
+
+    A .cmd launcher still runs through cmd.exe even with shell=False, so shell
+    metacharacters in an argument are re-parsed: a project folder named
+    `demo & calc` would execute calc. Every path handed to this comes from our
+    own scan rather than from a request, but the .exe takes its argv directly
+    and removes the whole class of problem instead of escaping around it.
+    """
+    local = os.environ.get("LOCALAPPDATA", "")
+    if cands is None:
+        cands = (os.path.join(local, r"Programs\Microsoft VS Code\Code.exe"),
+                 r"C:\Program Files\Microsoft VS Code\Code.exe",
+                 shutil.which("Code.exe"),
+                 shutil.which("code"))
+    for cand in cands:
+        # Reject .cmd/.bat: they run via cmd.exe, which re-parses arguments and
+        # would undo the reason for preferring the .exe in the first place.
+        if cand and os.path.isfile(cand) and not cand.lower().endswith((".cmd", ".bat")):
+            return cand
+    return None
+
+
+VSCODE = _find_vscode()
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    server_version = "coc"
+    protocol_version = "HTTP/1.1"
+    # Without this a client that promises more body than it sends pins a worker
+    # thread until it disconnects, and ThreadingHTTPServer has no thread cap.
+    timeout = 15
+
+    def log_message(self, fmt, *args):
+        sys.stderr.write("  %s %s\n" % (self.address_string(), fmt % args))
+
+    def log_error(self, fmt, *args):
+        # The browser holds keep-alive sockets open; `timeout` closing an idle one
+        # is normal, not an error worth a log line mid-demo.
+        if not fmt.startswith("Request timed out"):
+            self.log_message(fmt, *args)
+
+    # -- helpers
+
+    def _host_ok(self):
+        """Rejects DNS-rebinding and stray Host headers, but must accept plain
+        'localhost:7777' or the obvious URL would 403.
+
+        Exactly one Host header: with two, `get()` returns only the first, so an
+        intermediary that honours the last one could disagree with this check.
+        """
+        hosts = self.headers.get_all("Host") or []
+        return len(hosts) == 1 and hosts[0].strip().lower() in ALLOWED_HOSTS
+
+    def _local_ok(self):
+        """Guards the read endpoints against drive-by cross-origin requests.
+
+        A hostile page can send `Host: 127.0.0.1:7777` on a cross-origin fetch,
+        so the Host check alone still lets it trigger a full scan - 57 MB of
+        transcript reads and three git subprocesses per request. CORS stops it
+        reading the answer, but not the work. A custom header cannot be set
+        cross-origin without a preflight, and nothing here answers preflights.
+        """
+        got = self.headers.get("X-COC-Token") or ""
+        return secrets.compare_digest(got.encode("utf-8", "ignore"),
+                                      TOKEN.encode())
+
+    def _send(self, code, body, ctype="application/json; charset=utf-8",
+              extra=None):
+        if isinstance(body, str):
+            body = body.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        for k, v in (extra or {}).items():
+            self.send_header(k, v)
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _json(self, obj, code=200):
+        self._send(code, json.dumps(obj, ensure_ascii=False))
+
+    def _shell(self):
+        """The app shell. Inline <style>/<script> are nonce'd rather than
+        allowed via 'self': a bare default-src 'self' blocks inline blocks
+        outright and renders a blank page."""
+        try:
+            html = read_text(os.path.join(HERE, "index.html"))
+        except OSError:
+            return self._send(500, "index.html is missing", "text/plain; charset=utf-8")
+        nonce = secrets.token_urlsafe(18)
+        html = html.replace("{{NONCE}}", nonce).replace("{{TOKEN}}", TOKEN)
+        csp = (f"default-src 'self'; script-src 'nonce-{nonce}'; "
+               f"style-src 'nonce-{nonce}'; img-src 'self' data:; "
+               "connect-src 'self'; font-src 'self'; base-uri 'none'; "
+               "form-action 'none'; frame-ancestors 'none'")
+        self._send(200, html, "text/html; charset=utf-8",
+                   {"Content-Security-Policy": csp, "Cache-Control": "no-store"})
+
+    # -- routes
+
+    def do_GET(self):
+        if not self._host_ok():
+            return self._send(403, "bad host", "text/plain; charset=utf-8")
+        path = self.path.split("?")[0].rstrip("/") or "/"
+
+        if path.startswith("/api/") and not self._local_ok():
+            return self._json({"error": "missing X-COC-Token"}, 403)
+        if path == "/api/projects":
+            return self._json([light(r) for r in scan()])
+        if path.startswith("/api/project/"):
+            wanted = path[len("/api/project/"):]
+            for rec in scan():
+                if rec["id"] == wanted:
+                    return self._json(rec)
+            return self._json({"error": "unknown project"}, 404)
+        if path == "/api/blocked":
+            return self._json([
+                {"id": r["id"], "name": r["name"], "waiting": r["waiting"],
+                 "blockers": r["blockers"]}
+                for r in scan() if r["waiting"] or r["blockers"]])
+        if path == "/api/plans":
+            return self._json(plans())
+        if path.startswith("/api/"):
+            return self._json({"error": "unknown endpoint"}, 404)
+
+        # Client-side routes all serve the shell so /p/<id> is bookmarkable.
+        if path in CLIENT_ROUTES or path.startswith("/p/"):
+            return self._shell()
+        return self._send(404, "not found", "text/plain; charset=utf-8")
+
+    def do_POST(self):
+        if not self._host_ok():
+            return self._send(403, "bad host", "text/plain; charset=utf-8")
+        if self.path.split("?")[0].rstrip("/") != "/api/open":
+            return self._json({"error": "unknown endpoint"}, 404)
+
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            n = -1
+        if n < 0:
+            # min(-1, MAX_BODY) is -1, and read(-1) blocks until EOF.
+            self.close_connection = True
+            return self._json({"error": "bad content-length"}, 400)
+        if n > MAX_BODY:
+            # Reading only part of a declared body leaves the rest in the socket,
+            # where keep-alive parses it as the NEXT request line. Refuse and
+            # close instead of desynchronising the connection.
+            self.close_connection = True
+            return self._json({"error": "body too large"}, 413)
+        try:
+            body = json.loads(self.rfile.read(n) or b"{}")
+        except (ValueError, TypeError, OSError):
+            return self._json({"error": "bad body"}, 400)
+        if not isinstance(body, dict):
+            # `[1]` or `"x"` parses fine as JSON, then body.get explodes and
+            # kills the thread with no response at all.
+            return self._json({"error": "body must be an object"}, 400)
+
+        # The token makes this unreachable from any other origin. Without it,
+        # any website the browser visits could POST here and spawn an editor.
+        # Compared as bytes: compare_digest rejects non-ASCII str outright, so a
+        # token of "e" used to raise TypeError and drop the connection.
+        sent = body.get("token")
+        sent = sent if isinstance(sent, str) else ""
+        if not secrets.compare_digest(sent.encode("utf-8", "ignore"), TOKEN.encode()):
+            return self._json({"error": "bad token"}, 403)
+
+        # An id, looked up in OUR scan - never a path from the request. A
+        # path-accepting version of this endpoint is arbitrary-folder launch.
+        target = next((r for r in scan() if r["id"] == body.get("id")), None)
+        if not target or not target["path_exists"]:
+            return self._json({"error": "unknown or missing project"}, 404)
+        if not VSCODE or not os.path.isfile(VSCODE):
+            return self._json({"error": "VS Code CLI not found"}, 500)
+        try:
+            subprocess.Popen([VSCODE, target["path"]], shell=False,
+                             cwd=target["path"])
+        except (OSError, subprocess.SubprocessError) as exc:
+            return self._json({"error": f"launch failed: {exc}"}, 500)
+        return self._json({"opened": target["path"]})
+
+
+class Server(http.server.ThreadingHTTPServer):
+    daemon_threads = True
+    # On Windows SO_REUSEADDR lets a SECOND server bind a port already in use,
+    # and requests then land on either one: a forgotten COC answered with stale
+    # data next to the live one. Found running two side by side. Elsewhere it
+    # only means a fast restart after TIME_WAIT, which is what it is for.
+    allow_reuse_address = os.name != "nt"
+
+
+def serve():
+    scanned = scan()
+    print(f"Product Library  http://{HOST}:{PORT}   {len(scanned)} projects")
+    print(f"     VS Code: {VSCODE if VSCODE and os.path.isfile(VSCODE) else 'NOT FOUND'}")
+    Server((HOST, PORT), Handler).serve_forever()
+
+
+# -------------------------------------------------------------------- selftest
+
+def selftest():
+    """Each assert here failed on purpose once before being kept. The cases are
+    the real traps found while planning, not restatements of the code."""
+    import tempfile
+    global REGISTRY, EXTRA_ROOTS
+
+    def rec(**kw):
+        return json.dumps(kw, ensure_ascii=False)
+
+    root = tempfile.mkdtemp(prefix="coc-selftest-")
+    reg = os.path.join(root, "registry")
+    proj = os.path.join(root, "My Project")     # NB: space in the path
+    os.makedirs(os.path.join(proj, ".claude"))
+    slug_dir = os.path.join(reg, "D--My-Project")
+    os.makedirs(os.path.join(slug_dir, "memory"))
+
+    # TRAP 1: cwd is NOT on line 1. Line 1 is a queue-operation with no cwd.
+    # TRAP 2: the NEWEST transcript holds no prompt at all - the real state is
+    #         in the older one. Stopping at the newest returns nothing.
+    old = os.path.join(slug_dir, "1111.jsonl")
+    with open(old, "w", encoding="utf-8") as fh:
+        fh.write(rec(type="queue-operation", sessionId="1111") + "\n")
+        fh.write(rec(type="attachment", cwd=proj, gitBranch="main") + "\n")
+        fh.write(rec(type="last-prompt", lastPrompt="continue") + "\n")
+        # TRAP 3: non-ASCII. cp1252 cannot represent these; a locale-default
+        # read either mojibakes or raises.
+        fh.write(rec(type="last-prompt",
+                     lastPrompt="راجع الاستخراج العربي — verify the totals") + "\n")
+    new = os.path.join(slug_dir, "2222.jsonl")
+    with open(new, "w", encoding="utf-8") as fh:
+        fh.write(rec(type="queue-operation", sessionId="2222") + "\n")
+        fh.write(rec(type="attachment", cwd=proj, gitBranch="main") + "\n")
+        fh.write("x" * 400 + "\n")   # >MIN_JSONL_BYTES, still yields no prompt
+    os.utime(old, (1_000_000, 1_000_000))
+    os.utime(new, (2_000_000, 2_000_000))
+
+    cwd, branch = resolve_cwd(old)
+    assert cwd == proj, f"cwd not read past line 1: {cwd!r}"
+    assert branch == "main", branch
+
+    prompts, session_id, trivial = last_prompts(slug_dir)
+    assert session_id == "1111", f"newest-with-content fallback failed: {session_id}"
+    assert not trivial, "a substantive prompt was present"
+    assert prompts[-1].startswith("راجع"), f"non-ASCII lost: {prompts[-1]!r}"
+    assert "continue" not in prompts, "stoplist let 'continue' through"
+
+    # A transcript whose ONLY prompts are trivial must still report something,
+    # flagged - showing an empty bubble would be worse than showing "continue".
+    only_dull = os.path.join(slug_dir, "3333.jsonl")
+    with open(only_dull, "w", encoding="utf-8") as fh:
+        fh.write(rec(type="attachment", cwd=proj) + "\n")
+        fh.write(rec(type="last-prompt", lastPrompt="ok") + "\n")
+        fh.write("y" * 300 + "\n")
+    os.utime(only_dull, (3_000_000, 3_000_000))
+    p2, s2, t2 = last_prompts(slug_dir)
+    assert (s2, t2, p2) == ("3333", True, ["ok"]), (s2, t2, p2)
+    os.remove(only_dull)
+
+    # Frontmatter: the real shape, single-line JSON blockers, quoted scalars.
+    with open(os.path.join(proj, STATE_FILE), "w", encoding="utf-8") as fh:
+        fh.write('---\nstatus: paused\n'
+                 'last_updated: 2026-09-08T18:25:00+03:00\n'
+                 'next_action: "FRESH WINDOW — run the S40 prompt verbatim"\n'
+                 'blockers: ["Me [M]: five rulings still placeholders", '
+                 '"DONE 2026-09-06: counts ran", "Other session holds CLAUDE.md"]\n'
+                 '---\n\n## body\n')
+    fm = parse_frontmatter(read_text(os.path.join(proj, STATE_FILE)))
+    assert fm["status"] == "paused", fm["status"]
+    assert fm["next_action"].startswith("FRESH WINDOW —"), fm["next_action"]
+    assert not fm["next_action"].endswith('"'), "quotes not stripped"
+    assert len(fm["blockers"]) == 3, fm["blockers"]
+    w = waiting_on_me(fm["blockers"])
+    assert len(w) == 1 and w[0].startswith("Me [M]"), w
+    assert fm["format"] == "frontmatter", fm["format"]
+
+    # A real-world shape: folded block scalars, and blockers as a block
+    # SEQUENCE rather than inline JSON. The first parser read status as ">".
+    folded = parse_frontmatter(
+        "---\n"
+        "status: >\n"
+        "  main is at abc1234 and is FULLY VERIFIED:\n"
+        "  the coverage tab in three views.\n"
+        "last_updated: 2026-09-08T14:40:00+03:00\n"
+        "next_action: >\n"
+        "  1) get on the LAN\n"
+        "  2) then deploy\n"
+        "blockers:\n"
+        '  - "THE HOST1 IS OFF THIS LAN."\n'
+        '  - "Me [M]: pick a merge order"\n'
+        "---\n\nbody\n")
+    assert folded["status"].startswith("main is at abc1234"), folded["status"]
+    assert "\n" not in folded["status"], "'>' must fold newlines into spaces"
+    assert folded["status"].endswith("three views."), folded["status"]
+    assert folded["next_action"] == "1) get on the LAN 2) then deploy", folded["next_action"]
+    assert folded["last_updated"].startswith("2026-09-08"), folded["last_updated"]
+    assert len(folded["blockers"]) == 2, folded["blockers"]
+    assert folded["blockers"][0] == "THE HOST1 IS OFF THIS LAN.", folded["blockers"]
+    assert len(waiting_on_me(folded["blockers"])) == 1
+
+    # '|' is the literal variant and must KEEP its line breaks.
+    literal = parse_frontmatter("---\nnext_action: |\n  line one\n  line two\n---\n")
+    assert literal["next_action"] == "line one\nline two", repr(literal["next_action"])
+
+    # Project Gamma has NO frontmatter - a plain markdown doc whose
+    # resume point is a heading. It scanned as stateless until this fallback.
+    plain_doc = ("# Session State — Framework\n"
+                 "**Updated:** 2026-07-09 · Owner: Me\n\n"
+                 "Some preamble that is not the resume point.\n\n"
+                 "## ⏯ RESUME HERE — next actions, in order\n"
+                 "**REPRIORITIZED:** Focus is now Piece C.\n"
+                 "Second line of the resume block.\n\n"
+                 "## Something else entirely\n"
+                 "must not appear\n")
+    assert parse_frontmatter(plain_doc) is None
+    pl = parse_plain_state(plain_doc)
+    assert pl["format"] == "plain", pl["format"]
+    assert pl["last_updated"] == "2026-07-09", pl["last_updated"]
+    assert pl["next_action"].startswith("**REPRIORITIZED:**"), pl["next_action"]
+    assert "must not appear" not in pl["next_action"], "ran past the next heading"
+    assert "RESUME HERE" in pl["current_task"], pl["current_task"]
+    assert parse_plain_state("# doc\n\nno resume heading anywhere\n") is None
+
+    # Malformed frontmatter must degrade to raw text, never raise, never blank.
+    bad = parse_frontmatter('---\nstatus: paused\nblockers: [oops, unclosed\n---\n')
+    assert bad and bad["raw"], "no raw fallback"
+    assert bad["blockers"] == ["[oops, unclosed"], bad["blockers"]
+    assert parse_frontmatter("# no frontmatter here") is None
+
+    # TRAP 4: append-only logs are newest-at-BOTTOM. Reading the head shows
+    # January and calls it current.
+    with open(os.path.join(proj, "HANDOFF.md"), "w", encoding="utf-8") as fh:
+        fh.write("# Session Handoff\n\n## 2026-01-01 — ancient\n")
+        fh.write("filler\n" * 800)
+        fh.write("## 2026-09-08 — the entry that matters\nlast line here\n")
+    logs = read_logs(proj)
+    assert logs[0]["heading"] == "## 2026-09-08 — the entry that matters", logs[0]["heading"]
+    assert "ancient" not in logs[0]["tail"], "read the head instead of the tail"
+    assert logs[0]["tail"].endswith("last line here"), logs[0]["tail"][-40:]
+
+    # Git enrichment is optional: no .git must mean None, not a crash.
+    assert git_info(proj) is None, "invented git data for a non-repo"
+
+    # Full scan against the fixture, including a slug with no transcript at all
+    # (unresolvable - must survive as path:None, not be dropped) and a slug
+    # whose cwd no longer exists (must be marked, not dropped).
+    ghost = os.path.join(reg, "D--Gone")
+    os.makedirs(ghost)
+    with open(os.path.join(ghost, "9999.jsonl"), "w", encoding="utf-8") as fh:
+        fh.write(rec(type="attachment", cwd=os.path.join(root, "vanished")) + "\n")
+        fh.write(rec(type="last-prompt", lastPrompt="do the thing properly") + "\n")
+        fh.write("z" * 300 + "\n")
+    memory_only = os.path.join(reg, "D--Memory-Only", "memory")
+    os.makedirs(memory_only)
+    with open(os.path.join(memory_only, "MEMORY.md"), "w", encoding="utf-8") as fh:
+        fh.write("- [Thing](thing.md) — hook\n")
+
+    # A project whose state file has no frontmatter at all, reached through the
+    # full scan rather than by calling the parser directly - otherwise dropping
+    # the plain fallback from read_state() would go unnoticed.
+    plain_proj = os.path.join(root, "Plain Project")
+    os.makedirs(os.path.join(plain_proj, ".claude"))
+    with open(os.path.join(plain_proj, STATE_FILE), "w", encoding="utf-8") as fh:
+        fh.write("# Session State\n**Updated:** 2026-07-09\n\n"
+                 "## RESUME HERE\nbuild piece C next\n")
+    plain_slug = os.path.join(reg, "D--Plain-Project")
+    os.makedirs(plain_slug)
+    with open(os.path.join(plain_slug, "8888.jsonl"), "w", encoding="utf-8") as fh:
+        fh.write(rec(type="attachment", cwd=plain_proj) + "\n")
+        fh.write(rec(type="last-prompt", lastPrompt="get piece C moving") + "\n")
+        fh.write("q" * 300 + "\n")
+
+    extra = os.path.join(root, "Extra Root")
+    os.makedirs(extra)
+    with open(os.path.join(extra, "README.md"), "w", encoding="utf-8") as fh:
+        fh.write("# extra\n")
+
+    REGISTRY, EXTRA_ROOTS = reg, [extra, proj]   # proj is a dupe of the registry
+    _cache.clear()
+    _scan_cache.update(key=None, data=None)
+    got = {r["id"]: r for r in scan(force=True)}
+
+    assert len(got) == 5, sorted(got)   # dupe collapsed, nothing dropped
+
+    flat = got["D--Plain-Project"]
+    assert flat["state"]["format"] == "plain", flat["state"]
+    assert flat["state"]["next_action"].startswith("build piece C"), flat["state"]
+    assert light(flat)["next_action"].startswith("build piece C"), "bubble would be empty"
+    mine = got["D--My-Project"]
+    assert mine["name"] == "My Project", mine["name"]
+    assert mine["path"] == proj and mine["path_exists"]
+    assert mine["state"]["status"] == "paused"
+    assert len(mine["waiting"]) == 1
+    assert mine["sessions"] == 2 and mine["bytes"] > 0
+    assert mine["resume"].count(";") == 1 and "&&" not in mine["resume"], mine["resume"]
+    assert mine["session_id"] == "1111", mine["session_id"]
+
+    gone = got["D--Gone"]
+    assert gone["path_exists"] is False and gone["note"], gone
+    assert gone["prompts"] == ["do the thing properly"], gone["prompts"]
+
+    dark = got["D--Memory-Only"]
+    assert dark["path"] is None and dark["sessions"] == 0
+    assert dark["memory"].startswith("- [Thing]"), dark["memory"]
+    assert dark["note"], "unresolvable project carried no explanation"
+
+    assert got[_slugify(extra)]["source"] == "extra"
+    assert _slugify(proj) not in got, "EXTRA_ROOTS duplicated a registry project"
+
+    # The canvas payload must carry what a bubble needs, and nothing heavy.
+    lt = light(mine)
+    assert lt["next_action"].startswith("FRESH WINDOW"), lt["next_action"]
+    assert lt["status"] == "paused" and lt["status_note"] is None, lt
+    # A folded-paragraph status must NOT be offered as a badge.
+    long_status = dict(mine, state=dict(mine["state"], status="x" * 400))
+    lt2 = light(long_status)
+    assert lt2["status"] is None and len(lt2["status_note"]) == 400, lt2["status"]
+    assert lt["waiting_count"] == 1 and lt["blocker_count"] == 3
+    assert "logs" not in lt and "blockers" not in lt, sorted(lt)
+
+    # Ordering is by recency, so the canvas rings are correct by construction.
+    order = [r["id"] for r in scan()]
+    assert order.index("D--My-Project") < order.index("D--Memory-Only"), order
+
+    shutil.rmtree(root, ignore_errors=True)
+    selftest_regressions()
+    selftest_gate()
+    selftest_checkpoint()
+    print("selftest OK")
+
+
+def selftest_regressions():
+    """Every case here is a wrong answer an independent review actually found.
+
+    They are kept separate from the cases above only because they came later;
+    each one failed before its fix and each is a plausible real file, not a
+    contrived string.
+    """
+    import tempfile
+    global REGISTRY, EXTRA_ROOTS
+
+    def rec(**kw):
+        return json.dumps(kw, ensure_ascii=False) + "\n"
+
+    root = tempfile.mkdtemp(prefix="coc-regress-")
+
+    # -- frontmatter shapes that used to produce confident wrong answers -----
+
+    # A sequence dash at column 0 is valid YAML; requiring indentation gave [].
+    flat_seq = parse_frontmatter('---\nstatus: paused\nblockers:\n'
+                                 '- "Me [M]: decide the merge order"\n'
+                                 '- "Sam [A]: register the app"\n---\n')
+    assert len(flat_seq["blockers"]) == 2, flat_seq["blockers"]
+    assert len(waiting_on_me(flat_seq["blockers"])) == 1, flat_seq["blockers"]
+
+    # A quoted scalar wrapped over lines kept its opening quote and lost the rest.
+    wrapped = parse_frontmatter('---\nnext_action: "first half of the sentence\n'
+                                '  and the second half"\nstatus: paused\n---\n')
+    assert wrapped["next_action"] == "first half of the sentence and the second half", \
+        repr(wrapped["next_action"])
+    assert wrapped["status"] == "paused", wrapped["status"]
+
+    # An indented '---' inside a block scalar is a rule, not the terminator.
+    ruled = parse_frontmatter('---\nnext_action: |\n  do this\n  ---\n  then that\n'
+                              'status: paused\n---\n')
+    assert ruled["next_action"] == "do this\n---\nthen that", repr(ruled["next_action"])
+    assert ruled["status"] == "paused", "an indented rule ended the frontmatter"
+
+    # Non-list blockers must mean none, not one invented one.
+    # The last two parse as valid JSON but are not lists, so they reach the
+    # post-json branch rather than the null-ish shortcut - which is where
+    # wrapping used to invent a blocker out of nothing.
+    for raw in ("null", "~", "{}", "[]", "", '{"a": 1}', "5"):
+        got = parse_frontmatter("---\nblockers: " + raw + "\nstatus: paused\n---\n")
+        assert got["blockers"] == [], (raw, got["blockers"])
+        assert got["status"] == "paused", raw
+    assert parse_frontmatter('---\nblockers: ["a"]\n---\n')["blockers"] == ["a"]
+    assert parse_frontmatter('---\nblockers: ["a", "", "b"]\n---\n')["blockers"] == ["a", "b"]
+
+    # A BOM is invisible and used to void the entire parse.
+    bom = os.path.join(root, "bom")
+    os.makedirs(os.path.join(bom, ".claude"))
+    with open(os.path.join(bom, STATE_FILE), "w", encoding="utf-8-sig") as fh:
+        fh.write('---\nstatus: paused\nnext_action: "ship it"\n---\n')
+    st, _ = read_state(bom)
+    assert st and st.get("status") == "paused", "a BOM voided the frontmatter"
+
+    # -- plain-doc parsing ---------------------------------------------------
+
+    # "Resumed ..." is not the resume heading, and the FIRST match wins.
+    doc = ("# State\n**Updated:** 2026-01-01\n\n## Resumed the OCR work yesterday\n"
+           "historical note, not the plan\n\n## RESUME HERE\n"
+           "the actual next step\n**Updated:** 2026-09-08\n")
+    pl = parse_plain_state(doc)
+    assert pl["next_action"].startswith("the actual next step"), pl["next_action"]
+    assert pl["last_updated"] == "2026-09-08", pl["last_updated"]   # newest, not first
+
+    # A '#' comment inside a fenced block is not a heading.
+    fenced = ("## RESUME HERE\nrun this:\n```bash\n# install deps first\n"
+              "py setup.py\n```\nthen deploy\n\n## Older\nignore me\n")
+    pf = parse_plain_state(fenced)
+    assert "then deploy" in pf["next_action"], pf["next_action"]
+    assert "ignore me" not in pf["next_action"], pf["next_action"]
+
+    # -- append-only log heading --------------------------------------------
+
+    assert _last_heading(["## 2026-09-08 real newest", "```", "## 2026-01-01 template",
+                          "```", "body"]) == "## 2026-09-08 real newest"
+    assert _last_heading(["## 2026-01-01 ancient", "### 2026-09-08 newest"]) \
+        == "### 2026-09-08 newest"
+
+    # -- the tail window can cut the one record that mattered ----------------
+
+    big = os.path.join(root, "big.jsonl")
+    real = "REWRITE the extraction pipeline for arabic totals"
+    real_line = rec(type="last-prompt", lastPrompt=real)
+    cont_line = rec(type="last-prompt", lastPrompt="continue")
+    head_line = rec(type="filler", pad="x" * 1000)
+    # Place the window boundary INSIDE real_line: leave TAIL_BYTES minus half of
+    # that line after it, so tailing drops exactly the record that matters and
+    # keeps the "continue" that follows it.
+    pad_len = TAIL_BYTES - len(real_line) // 2 - len(cont_line)
+    assert pad_len > 0
+    with open(big, "w", encoding="utf-8") as fh:
+        fh.write(head_line)
+        fh.write(real_line)
+        fh.write(cont_line)
+        fh.write("y" * (pad_len - 1) + "\n")
+    size = os.path.getsize(big)
+    boundary = size - TAIL_BYTES
+    assert len(head_line) < boundary < len(head_line) + len(real_line), \
+        "boundary at %d does not fall inside the record" % boundary
+    assert size > TAIL_BYTES, "fixture is not big enough to be tailed"
+    tailed = _prompts_in(big)
+    assert real not in tailed, "fixture did not straddle the window; test is void"
+    slug = os.path.join(root, "reg", "D--Big")
+    os.makedirs(slug)
+    shutil.move(big, os.path.join(slug, "big.jsonl"))
+    prompts, sid, trivial = last_prompts(slug)
+    assert prompts == [real], prompts        # escalated to a full read
+    assert not trivial and sid == "big", (sid, trivial)
+
+    # -- cwd resolution walks transcripts ------------------------------------
+
+    proj = os.path.join(root, "Walk Me")
+    os.makedirs(proj)
+    older = os.path.join(slug, "older.jsonl")
+    with open(older, "w", encoding="utf-8") as fh:
+        fh.write(rec(type="attachment", cwd=proj, gitBranch="main"))
+        fh.write(rec(type="last-prompt", lastPrompt="do the thing carefully"))
+        fh.write("z" * 300 + "\n")
+    newest = os.path.join(slug, "newest.jsonl")
+    with open(newest, "w", encoding="utf-8") as fh:
+        fh.write(rec(type="queue-operation"))     # no cwd anywhere
+        fh.write("w" * 300 + "\n")
+    os.utime(older, (1_000_000, 1_000_000))
+    os.utime(newest, (3_000_000, 3_000_000))
+    path, branch = resolve_project(transcripts(slug))
+    assert path == proj and branch == "main", (path, branch)
+
+    # -- same-second, same-length edits must not be cached -------------------
+
+    # Prime the cache at .25s, then change the content to the same LENGTH and
+    # stamp it .75s - the same whole second. A key built from int(st_mtime)
+    # is byte-identical across those two states, so the read comes back stale.
+    sp = os.path.join(bom, STATE_FILE)
+    with open(sp, "w", encoding="utf-8") as fh:
+        fh.write('---\nstatus: aaaaaa\n---\n')
+    os.utime(sp, (1_700_000_000.25, 1_700_000_000.25))
+    size_a = os.stat(sp).st_size
+    assert read_state(bom)[0]["status"] == "aaaaaa"
+    with open(sp, "w", encoding="utf-8") as fh:
+        fh.write('---\nstatus: bbbbbb\n---\n')     # identical length
+    os.utime(sp, (1_700_000_000.75, 1_700_000_000.75))
+    assert os.stat(sp).st_size == size_a, "sizes differ, so the test proves nothing"
+    assert read_state(bom)[0]["status"] == "bbbbbb", "cache keyed on whole seconds"
+
+    # -- the scan must notice an append and a state rewrite ------------------
+
+    live = os.path.join(root, "Live")
+    os.makedirs(os.path.join(live, ".claude"))
+    lslug = os.path.join(root, "reg2", "D--Live")
+    os.makedirs(lslug)
+    lj = os.path.join(lslug, "a.jsonl")
+    with open(lj, "w", encoding="utf-8") as fh:
+        fh.write(rec(type="attachment", cwd=live))
+        fh.write(rec(type="last-prompt", lastPrompt="the ORIGINAL plan for step one"))
+        fh.write("q" * 300 + "\n")
+    with open(os.path.join(live, STATE_FILE), "w", encoding="utf-8") as fh:
+        fh.write('---\nnext_action: "ORIGINAL next action"\n---\n')
+
+    REGISTRY, EXTRA_ROOTS = os.path.join(root, "reg2"), []
+    _cache.clear()
+    _scan_cache.update(at=0.0, data=None)
+    first = scan()[0]
+    assert first["prompts"][-1].startswith("the ORIGINAL"), first["prompts"]
+
+    with open(lj, "a", encoding="utf-8") as fh:
+        fh.write(rec(type="last-prompt", lastPrompt="the NEW plan for step two"))
+    with open(os.path.join(live, STATE_FILE), "w", encoding="utf-8") as fh:
+        fh.write('---\nnext_action: "NEW next action"\n---\n')
+    # Expire the TTL but KEEP the cached data: that is the state a live server
+    # is in 30 seconds later. Clearing `data` too would let a never-expiring
+    # cache pass this test by accident.
+    _scan_cache["at"] = 0.0
+    assert _scan_cache["data"] is not None, "test must leave stale data in place"
+    again = scan()[0]
+    assert again["prompts"][-1].startswith("the NEW"), \
+        "an append to an existing transcript was invisible: " + str(again["prompts"])
+    assert again["state"]["next_action"] == "NEW next action", again["state"]
+
+    # -- ids stay unique even when _slugify collapses two paths --------------
+
+    a = os.path.join(root, "a b")
+    b = os.path.join(root, "a-b")
+    os.makedirs(a)
+    os.makedirs(b)
+    assert _slugify(a) == _slugify(b), "fixture no longer collides; test is void"
+    REGISTRY, EXTRA_ROOTS = os.path.join(root, "reg2"), [a, b]
+    _scan_cache.update(at=0.0, data=None)
+    ids = [r["id"] for r in scan()]
+    assert len(ids) == len(set(ids)), ids
+
+    # Two registry slugs pointing at ONE folder must yield one card.
+    dup = os.path.join(root, "reg3")
+    for name in ("D--One", "D--Two"):
+        d = os.path.join(dup, name)
+        os.makedirs(d)
+        with open(os.path.join(d, "s.jsonl"), "w", encoding="utf-8") as fh:
+            fh.write(rec(type="attachment", cwd=live))
+            fh.write(rec(type="last-prompt", lastPrompt="same folder twice over"))
+            fh.write("k" * 300 + "\n")
+    REGISTRY, EXTRA_ROOTS = dup, []
+    _scan_cache.update(at=0.0, data=None)
+    paths = [os.path.normcase(r["path"]) for r in scan() if r["path"]]
+    assert len(paths) == len(set(paths)), paths
+
+    # -- launcher must never be a batch file ---------------------------------
+
+    # Tested through the candidate list rather than through the real machine:
+    # here Code.exe happens to exist and would be chosen either way, so an
+    # assert about VSCODE itself could never fail.
+    bat = os.path.join(root, "code.cmd")
+    exe = os.path.join(root, "Code.exe")
+    for f in (bat, exe):
+        with open(f, "w", encoding="utf-8") as fh:
+            fh.write("")
+    assert _find_vscode([bat]) is None, "a batch launcher was accepted"
+    assert _find_vscode([bat, exe]) == exe, _find_vscode([bat, exe])
+    assert _find_vscode([os.path.join(root, "nope.exe")]) is None
+    if VSCODE:
+        assert not VSCODE.lower().endswith((".cmd", ".bat")), VSCODE
+
+    shutil.rmtree(root, ignore_errors=True)
+
+
+def selftest_gate():
+    """Drift and the readiness gate, ported from Product Harness: a verdict is
+    only valid against the inputs it saw, and a hard check never defaults to
+    passing."""
+    import tempfile
+    global REGISTRY, EXTRA_ROOTS
+
+    def rec(**kw):
+        return json.dumps(kw, ensure_ascii=False) + "\n"
+
+    T = 1_700_000_000.0
+
+    # -- drift, as a pure function -------------------------------------------
+
+    assert drift(None, [(T, "transcript")]) is None, "no state file cannot drift"
+    assert drift(T, []) is None
+    # Inside the grace window: the session that wrote the state keeps writing
+    # its transcript for a few minutes afterwards. That is not drift.
+    assert drift(T, [(T + DRIFT_GRACE - 1, "transcript")]) is None
+    d = drift(T, [(T + 3 * 3600, "transcript"), (T + 5 * 3600, "commit"),
+                  (None, "commit")])
+    assert d and d["by"] == "commit" and d["behind_hours"] == 5.0, d   # newest wins
+
+    # -- the gate, on hand-built records -------------------------------------
+
+    def card(**state):
+        blockers = state.pop("blockers", [])
+        # Proof present by default, so each case isolates the check it names;
+        # the proof check has its own cases in selftest_checkpoint().
+        state.setdefault("proof", "53/53 passed")
+        return {"state": state, "blockers": blockers,
+                "drift": state.pop("_drift", None) if state else None}
+
+    none = gate({"state": None, "blockers": [], "drift": None})
+    assert none["verdict"] == "fail", none
+    assert [g["id"] for g in none["gaps"]] == ["has_state"], none["gaps"]
+
+    good = gate(card(next_action="rerun the arabic totals against the ledger"))
+    assert good == {"verdict": "pass", "gaps": [], "next": None}, good
+
+    # Filler is not a next action - same stoplist as the prompt bubble.
+    dull = gate(card(next_action="continue"))
+    assert dull["verdict"] == "fail" and dull["gaps"][0]["id"] == "next_action", dull
+    assert gate(card(next_action=None))["verdict"] == "fail", "missing next_action passed"
+
+    stale = gate(card(next_action="rerun the arabic totals against the ledger",
+                      _drift={"by": "transcript"}))
+    assert stale["verdict"] == "fail" and stale["gaps"][0]["id"] == "fresh", stale
+
+    # An unowned blocker is a SOFT gap: reported, never blocking. DONE entries
+    # are not open, so they need no owner.
+    soft = gate(card(next_action="rerun the arabic totals against the ledger",
+                     blockers=["Me [M]: pick a merge order",
+                               "THE HOST1 IS OFF THIS LAN.",
+                               "DONE 2026-09-06: counts ran"]))
+    assert soft["verdict"] == "pass", soft
+    assert [g["id"] for g in soft["gaps"]] == ["blockers_owned"], soft["gaps"]
+    assert gate(card(next_action="rerun the arabic totals against the ledger",
+                     blockers=["DONE: all clear", "Sam [A]: register the app"])
+                )["gaps"] == []
+
+    # Hard gaps come before soft ones, so `next` is always the blocking question.
+    both = gate(card(next_action="ok", blockers=["nobody owns this"]))
+    assert [g["hard"] for g in both["gaps"]] == [True, False], both["gaps"]
+    assert both["next"] == both["gaps"][0]["question"]
+
+    # -- end to end: work after the last state write flags drift -------------
+
+    root = tempfile.mkdtemp(prefix="coc-gate-")
+    proj = os.path.join(root, "Drifter")
+    os.makedirs(os.path.join(proj, ".claude"))
+    sp = os.path.join(proj, STATE_FILE)
+    with open(sp, "w", encoding="utf-8") as fh:
+        fh.write('---\nnext_action: "wire the export button to the ledger"\n'
+                 'proof: "export test 4/4 passed"\n---\n')
+    slug = os.path.join(root, "reg", "D--Drifter")
+    os.makedirs(slug)
+    tj = os.path.join(slug, "t.jsonl")
+    with open(tj, "w", encoding="utf-8") as fh:
+        fh.write(rec(type="attachment", cwd=proj))
+        fh.write(rec(type="last-prompt", lastPrompt="add the csv export path"))
+        fh.write("q" * 300 + "\n")
+    os.utime(sp, (T, T))
+    os.utime(tj, (T + 4 * 3600, T + 4 * 3600))
+
+    REGISTRY, EXTRA_ROOTS = os.path.join(root, "reg"), []
+    _cache.clear()
+    _scan_cache.update(at=0.0, data=None)
+    got = scan(force=True)[0]
+    assert got["drift"] and got["drift"]["by"] == "transcript", got["drift"]
+    assert got["gate"]["verdict"] == "fail", got["gate"]
+    assert got["gate"]["next"] == got["gate"]["gaps"][0]["question"]
+    lt = light(got)
+    assert lt["drift"] is True and lt["gate"] == "fail" and lt["gap_count"] == 1, lt
+    assert lt["gate_next"], lt
+
+    # Rewriting the state after the work clears it - the same way a fresh
+    # grading clears a stale one in the Harness.
+    os.utime(sp, (T + 5 * 3600, T + 5 * 3600))
+    got = scan(force=True)[0]
+    assert got["drift"] is None, got["drift"]
+    assert got["gate"]["verdict"] == "pass", got["gate"]
+
+    # A folder that no longer exists gets no verdict at all, not a fake fail.
+    shutil.rmtree(proj)
+    _scan_cache.update(at=0.0, data=None)
+    gone = scan(force=True)[0]
+    assert gone["gate"] is None and light(gone)["gate"] is None, gone["gate"]
+
+    shutil.rmtree(root, ignore_errors=True)
+
+
+def selftest_checkpoint():
+    """The file /coc-checkpoint writes is a contract. The fixture is the
+    example from skills/coc-checkpoint/SKILL.md verbatim, so the skill and the
+    parser cannot drift apart without this failing."""
+    import tempfile
+    global REGISTRY, EXTRA_ROOTS
+
+    skill = os.path.join(HERE, "skills", "coc-checkpoint", "SKILL.md")
+    example = read_text(skill).split("## Example", 1)[1].split("```")[1].strip("\n")
+
+    root = tempfile.mkdtemp(prefix="coc-checkpoint-")
+    proj = os.path.join(root, "Checkpointed")
+    os.makedirs(os.path.join(proj, ".claude"))
+    with open(os.path.join(proj, STATE_FILE), "w", encoding="utf-8") as fh:
+        fh.write(example + "\n\n## Notes\n")
+    REGISTRY, EXTRA_ROOTS = os.path.join(root, "no-registry"), [proj]
+    _cache.clear()
+    _scan_cache.update(at=0.0, data=None)
+    got = scan(force=True)[0]
+    lt = light(got)
+
+    assert lt["stage"] == "verify", lt["stage"]
+    assert lt["proof"] == "py coc.py --selftest -> selftest OK; commit 39be42f", lt["proof"]
+    assert lt["status"] == "active" and lt["waiting_count"] == 1, lt
+    assert lt["blocker_count"] == 2, lt
+    assert got["state"]["stage"] == "verify", got["state"]
+    # A paragraph in `stage:` must not become a badge, same rule as status.
+    rambling = dict(got, state=dict(got["state"], stage="x" * 40))
+    assert light(rambling)["stage"] is None, light(rambling)["stage"]
+
+    # The skill's example is a complete checkpoint: nothing left to ask.
+    assert got["gate"] == {"verdict": "pass", "gaps": [], "next": None}, got["gate"]
+
+    # Proof is Harness's "a pass must cite evidence", kept SOFT so state files
+    # written before the skill existed still pass. A placeholder is not proof.
+    base = {"next_action": "rerun the arabic totals against the ledger"}
+    for proof in (None, "", "none yet - a green probe run would prove it"):
+        g = gate({"state": dict(base, proof=proof), "blockers": [], "drift": None})
+        assert g["verdict"] == "pass", (proof, g)
+        assert [x["id"] for x in g["gaps"]] == ["proof"], (proof, g["gaps"])
+        assert g["gaps"][0]["hard"] is False
+    assert gate({"state": dict(base, proof="53/53 passed"), "blockers": [],
+                 "drift": None})["gaps"] == []
+
+    # Checked proof, Harness's citation check: a commit the proof cites must
+    # exist in that repo, not just be quoted. Soft, like the proof check.
+    cited = gate({"state": dict(base, proof="commit 0badc0de"), "blockers": [],
+                  "drift": None, "proof_unknown": ["0badc0de"]})
+    assert cited["verdict"] == "pass", cited
+    assert [(x["id"], x["hard"]) for x in cited["gaps"]] == [("proof_commit", False)], cited
+    # No repo to ask (like the skill example above): unverified, not disproven.
+    assert unknown_commits(proj, "commit 0badc0de") == []
+
+    git = shutil.which("git")
+    if git:
+        repo = os.path.join(root, "Cited")
+        os.makedirs(os.path.join(repo, ".claude"))
+
+        def g(*args):
+            return subprocess.run(
+                [git, "-C", repo, "-c", "user.name=t", "-c", "user.email=t@t",
+                 "-c", "commit.gpgsign=false"] + list(args),
+                capture_output=True, text=True, check=True).stdout.strip()
+
+        g("init", "-q")
+        g("commit", "-q", "--allow-empty", "-m", "real work")
+        real = g("rev-parse", "--short", "HEAD")
+        assert unknown_commits(repo, f"6/6 passed; commit {real}") == []
+        assert unknown_commits(repo, "6/6 passed; commit 0badc0de") == ["0badc0de"]
+        # A blob or tree hash is not a commit, even though cat-file -e finds it.
+        tree = g("rev-parse", "--short", "HEAD^{tree}")
+        assert unknown_commits(repo, f"commit {tree}") == [tree]
+
+        # End to end: the scan asks the project's own repo.
+        def scan_with(proof):
+            with open(os.path.join(repo, STATE_FILE), "w", encoding="utf-8") as fh:
+                fh.write(f'---\nnext_action: "{base["next_action"]}"\n'
+                         f'proof: "{proof}"\n---\n')
+            global EXTRA_ROOTS
+            EXTRA_ROOTS = [repo]
+            _cache.clear()
+            _scan_cache.update(at=0.0, data=None)
+            return scan(force=True)[0]["gate"]
+
+        fake = scan_with("6/6 passed; commit 0badc0de")
+        assert [x["id"] for x in fake["gaps"]] == ["proof_commit"], fake
+        assert scan_with(f"6/6 passed; commit {real}")["gaps"] == []
+
+    shutil.rmtree(root, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        selftest()
+    else:
+        serve()

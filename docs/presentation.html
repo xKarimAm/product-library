@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Product Library</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%22-1%20-1%2012%2011%22%20shape-rendering%3D%22crispEdges%22%3E%3Cg%20fill%3D%22%23D4785A%22%3E%3Crect%20x%3D%222%22%20y%3D%220%22%20width%3D%226%22%20height%3D%224%22/%3E%3Crect%20x%3D%220%22%20y%3D%224%22%20width%3D%2210%22%20height%3D%222%22/%3E%3Crect%20x%3D%222%22%20y%3D%226%22%20width%3D%226%22%20height%3D%221%22/%3E%3Crect%20x%3D%221%22%20y%3D%227%22%20width%3D%221%22%20height%3D%222%22/%3E%3Crect%20x%3D%223%22%20y%3D%227%22%20width%3D%221%22%20height%3D%222%22/%3E%3Crect%20x%3D%226%22%20y%3D%227%22%20width%3D%221%22%20height%3D%222%22/%3E%3Crect%20x%3D%228%22%20y%3D%227%22%20width%3D%221%22%20height%3D%222%22/%3E%3C/g%3E%3Cg%20fill%3D%22%23111%22%3E%3Crect%20x%3D%223%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22/%3E%3Crect%20x%3D%226%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22/%3E%3C/g%3E%3C/svg%3E">
+<style>
+:root{--bg:#140B2A;--ink:#EFE9F7;--dim:rgba(239,233,247,.66);--clay:#D4785A;--gold:#F4C04E;
+  --violet:#8B5CF6;--blue:#3D7BFF;--green:#1FBF75;--red:#FF6B5A;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,"Cascadia Code",Consolas,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:400 22px/1.45 var(--sans);overflow:hidden}
+body{background:radial-gradient(70% 60% at 50% 60%,#4A1670 0%,#2A0C52 45%,#140B2A 100%)}
+.deck{position:relative;height:100%}
+section{position:absolute;inset:0;padding:6vh 7vw 9vh;display:flex;flex-direction:column;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .35s ease}
+section.on{opacity:1;pointer-events:auto}
+h1{font-size:clamp(44px,6vw,88px);line-height:1.02;margin:0 0 .2em;letter-spacing:-.02em}
+h2{font-size:clamp(30px,3.6vw,52px);line-height:1.1;margin:0 0 .6em;letter-spacing:-.01em}
+.kick{font:600 15px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+p{margin:.3em 0 .6em;max-width:60ch}
+.lede{font-size:1.15em;color:var(--dim);max-width:52ch}
+.big{font-size:clamp(28px,3vw,42px);line-height:1.25;max-width:30ch}
+.list{font-size:clamp(22px,2.2vw,32px);line-height:1.3}
+em{color:var(--gold);font-style:normal}
+code{font:500 .86em var(--mono);background:rgba(255,255,255,.08);padding:.1em .35em;border-radius:5px}
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.card h3{margin:0 0 6px;font-size:.95em}
+.card p{font-size:.8em;color:var(--dim);margin:0}
+.dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:8px}
+.d-clay{background:var(--clay)}.d-red{background:var(--red)}.d-violet{background:var(--violet)}
+ul{margin:.2em 0;padding-left:1.1em}li{margin:.35em 0}
+.small{font-size:.75em;color:var(--dim);margin-top:22px}
+.title-row{display:flex;align-items:center;gap:28px}
+.ladder{display:flex;align-items:flex-end;gap:4vw;margin:10px 0 24px}
+.ladder figure{margin:0;text-align:center}
+.ladder figcaption{font-size:.75em;margin-top:8px}
+.ladder figcaption b{display:block;font-size:1.05em}
+.flow{display:flex;align-items:stretch;gap:14px;flex-wrap:wrap}
+.flow .card{flex:1;min-width:180px}
+.arrow{align-self:center;font-size:30px;color:var(--gold)}
+iframe{width:100%;height:62vh;border:1px solid var(--line);border-radius:14px;background:#0d0820}
+.nav{position:fixed;left:0;right:0;bottom:16px;display:flex;justify-content:center;gap:8px;z-index:5}
+.nav i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.25);cursor:pointer}
+.nav i.on{background:var(--gold)}
+.hint{position:fixed;right:20px;bottom:12px;font:500 13px var(--mono);color:var(--dim)}
+@media (max-width:800px){.g3,.g2{grid-template-columns:1fr}body{font-size:17px}section{padding:5vh 5vw 8vh;overflow:auto}.ladder{flex-wrap:wrap}}
+@media (prefers-reduced-motion:reduce){section{transition:none}}
+</style>
+</head>
+<body>
+<main class="deck">
+
+<section class="on">
+  <div class="title-row">
+    <svg width="120" height="108" viewBox="0 0 10 9" shape-rendering="crispEdges" aria-hidden="true">
+      <g fill="#D4785A"><rect x="2" y="0" width="6" height="4"/><rect x="0" y="4" width="10" height="2"/><rect x="2" y="6" width="6" height="1"/>
+        <rect x="1" y="7" width="1" height="2"/><rect x="3" y="7" width="1" height="2"/><rect x="6" y="7" width="1" height="2"/><rect x="8" y="7" width="1" height="2"/></g>
+      <g fill="#111"><rect x="3" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/></g>
+    </svg>
+    <div>
+      <div class="kick">A city out of everything I've started</div>
+      <h1>Product Library</h1>
+    </div>
+  </div>
+  <p class="lede">A local, read-only dashboard that turns every project I've started with Claude Code into a living SimCity-style city, so none of my prototypes get lost.</p>
+</section>
+
+<section>
+  <div class="kick">Why I built it</div>
+  <h2>I start a lot of things. Some of them just disappear.</h2>
+  <p class="big">Prototypes, side projects and little tools, spread across folders and subfolders. The question I kept asking: <em>where did I leave off, and is that note still true?</em></p>
+  <p class="lede">So I wanted one place that tracks every one of them: a product library, with the fun of SimCity, personal to me.</p>
+</section>
+
+<section>
+  <div class="kick">What I built</div>
+  <h2>Every project gets a building</h2>
+  <div class="ladder" aria-label="growth ladder">
+    <figure><svg width="90" height="60" viewBox="0 0 90 60" aria-hidden="true"><polygon points="45,38 80,50 45,60 10,50" fill="#6B4E36"/><polygon points="45,38 80,50 45,60 10,50" fill="none" stroke="#C9A86A" stroke-dasharray="3 3"/></svg><figcaption><b>Dirt lot</b>never got going</figcaption></figure>
+    <figure><svg width="90" height="80" viewBox="0 0 90 80" aria-hidden="true"><polygon points="20,70 45,30 70,70" fill="#3D7BFF"/><polygon points="45,30 70,70 80,62 56,26" fill="#2a59bd"/><polygon points="40,70 45,55 50,70" fill="#1E1828"/><path d="M45 30 L45 14" stroke="#9A8FB0" stroke-width="2"/><polygon points="45,14 58,18 45,22" fill="#5d93ff"/></svg><figcaption><b>Tent</b>just started</figcaption></figure>
+    <figure><svg width="90" height="120" viewBox="0 0 90 120" aria-hidden="true"><rect x="25" y="50" width="40" height="70" fill="#8B5CF6" opacity=".9"/><rect x="25" y="44" width="40" height="6" fill="#D4785A"/><g fill="#F4C04E"><rect x="31" y="58" width="6" height="7"/><rect x="42" y="58" width="6" height="7"/><rect x="53" y="58" width="6" height="7"/><rect x="31" y="74" width="6" height="7"/><rect x="53" y="74" width="6" height="7"/><rect x="42" y="90" width="6" height="7"/></g></svg><figcaption><b>Low-rise</b>finding its footing</figcaption></figure>
+    <figure><svg width="110" height="230" viewBox="0 0 110 230" aria-hidden="true"><path d="M55 40 L55 0 M20 6 L100 6 M88 6 L88 30" stroke="#F4C04E" stroke-width="2.5" fill="none"/><rect x="25" y="60" width="60" height="170" fill="#5c4f86"/><rect x="33" y="40" width="44" height="20" fill="#6d5f99"/><rect x="25" y="55" width="60" height="6" fill="#8B5CF6"/><g fill="#F4C04E"><rect x="33" y="72" width="8" height="9"/><rect x="51" y="72" width="8" height="9"/><rect x="69" y="72" width="8" height="9"/><rect x="33" y="94" width="8" height="9"/><rect x="69" y="94" width="8" height="9"/><rect x="51" y="116" width="8" height="9"/><rect x="33" y="138" width="8" height="9"/><rect x="51" y="138" width="8" height="9"/><rect x="69" y="160" width="8" height="9"/><rect x="33" y="182" width="8" height="9"/><rect x="51" y="204" width="8" height="9"/></g></svg><figcaption><b>Tower</b>lots of work, crane = still going up</figcaption></figure>
+  </div>
+  <div class="grid g3">
+    <div class="card"><h3><span class="dot d-clay"></span>Waiting on me</h3><p>A decision only I can make.</p></div>
+    <div class="card"><h3><span class="dot d-red"></span>Blocked</h3><p>Waiting on someone else.</p></div>
+    <div class="card"><h3><span class="dot d-violet"></span>Checkpointed</h3><p>Has a written "where I left off".</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="kick">How it works</div>
+  <h2>It only reads what's already on disk</h2>
+  <div class="flow">
+    <div class="card"><h3>Claude Code history</h3><p><code>~/.claude/projects/*.jsonl</code>: every project's real folder, last prompt, sessions, last activity.</p></div>
+    <div class="card"><h3>Git</h3><p>Branch, last commit, uncommitted work, and checking that cited commits exist.</p></div>
+    <div class="card"><h3>One checkpoint file</h3><p><code>session-state.md</code>: stage, next step, proof, blockers. Written by my <code>/coc-checkpoint</code> skill.</p></div>
+    <div class="arrow">&rarr;</div>
+    <div class="card"><h3>One Python file</h3><p>Scan, drift check, readiness gate. Standard library only.</p></div>
+    <div class="arrow">&rarr;</div>
+    <div class="card"><h3>One HTML file</h3><p>The city. SVG and CSS, no build step.</p></div>
+  </div>
+  <p class="small">The dashboard never writes. Anything that writes is a skill I run on purpose.</p>
+</section>
+
+<section>
+  <div class="kick">Live demo</div>
+  <h2>Watch it stop trusting a note</h2>
+  <ul class="list">
+    <li>Click around a 20-building city: next step, proof, the gate.</li>
+    <li>Commit to the "good" project live. Ten seconds later: <em>STALE</em>.</li>
+    <li>Write a checkpoint. It passes again.</li>
+    <li>A project citing a commit that was never made, caught by asking git.</li>
+    <li>The report: every project, failing first, one question each.</li>
+  </ul>
+  <p class="small">Live app: <code>http://127.0.0.1:7777</code> &middot; offline copy on the next slide</p>
+</section>
+
+<section>
+  <div class="kick">The city, running offline</div>
+  <iframe src="../poc_city.html?hour=22" title="Product Library city on demo data" loading="lazy"></iframe>
+</section>
+
+<section>
+  <div class="kick">What another builder can learn</div>
+  <h2>A note about your work is only true the moment you write it</h2>
+  <div class="grid g3">
+    <div class="card"><h3>Notes go stale</h3><p>Compare when the note was written with the newest commit and session. If the work is newer, the note is labelled "written before the latest work" and the gate fails.</p></div>
+    <div class="card"><h3>Check evidence, don't trust it</h3><p>A model can write a commit hash that never existed. <code>git cat-file -e &lt;hash&gt;^{commit}</code> catches it. Cheap, deterministic, no model needed.</p></div>
+    <div class="card"><h3>My tests passed for free</h3><p>The mutation script said every breakage was caught. The copy it tested couldn't find its own files, so even good code failed. New rule: the baseline must pass first.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="kick">More hard-won ones</div>
+  <div class="grid g2">
+    <div class="card"><h3>Environment looks like a bug</h3><p>Windows "Animation effects" off made Chrome ask for reduced motion. The city froze and browser tests failed, with no code change.</p></div>
+    <div class="card"><h3>Invisible is worse than wrong</h3><p>A NaN tower height drew nothing, with no error. A wrong building is a bug you can see; a missing one looks like a design choice.</p></div>
+    <div class="card"><h3>Measure, then speed up</h3><p>A 40-project scan took 5s: 138 git calls in a row. A thread pool brought it to 1.7s.</p></div>
+    <div class="card"><h3>Port the concept, not the stack</h3><p>The ideas came from my Postgres/Express/React grader. Here each one is about 30 lines of stdlib Python.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="kick">Take it home, even without Product Library</div>
+  <h2>Five habits</h2>
+  <ul class="list">
+    <li>End every session with: <em>next concrete step</em>, <em>proof it worked</em>, <em>who owns each blocker</em>. "Continue" is not a next step.</li>
+    <li>Treat any status note as stale once the work is newer than the note.</li>
+    <li>Verify AI-cited evidence with a deterministic check before believing it.</li>
+    <li>Mutation-test your tests, and make sure the baseline passes first.</li>
+    <li>Keep dashboards read-only, and let the fun parts carry real data.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="kick">Technologies</div>
+  <div class="grid g3">
+    <div class="card"><h3>Claude Code (Opus)</h3><p>Built pairing with it, and it's the data source: its local session history.</p></div>
+    <div class="card"><h3>Custom skill</h3><p><code>/coc-checkpoint</code> writes the checkpoint at the end of a session.</p></div>
+    <div class="card"><h3>Python stdlib</h3><p><code>http.server</code>, parsing, gate, drift, thread pool. Zero dependencies.</p></div>
+    <div class="card"><h3>Git</h3><p>State of every repo, plus verifying cited commits.</p></div>
+    <div class="card"><h3>Vanilla JS, SVG, CSS</h3><p>Isometric city, procedural towers, pixel villagers, day/night. Strict CSP.</p></div>
+    <div class="card"><h3>CDP and Playwright</h3><p>53 geometry and motion checks, screenshot probes, mutation testing.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="title-row">
+    <svg width="90" height="81" viewBox="0 0 10 9" shape-rendering="crispEdges" aria-hidden="true">
+      <g fill="#D4785A"><rect x="2" y="0" width="6" height="4"/><rect x="0" y="4" width="10" height="2"/><rect x="2" y="6" width="6" height="1"/>
+        <rect x="1" y="7" width="1" height="2"/><rect x="3" y="7" width="1" height="2"/><rect x="6" y="7" width="1" height="2"/><rect x="8" y="7" width="1" height="2"/></g>
+      <g fill="#111"><rect x="3" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/></g>
+    </svg>
+    <div><h1>Thank you</h1><p class="lede">Nothing I start gets lost now. Questions?</p></div>
+  </div>
+</section>
+
+</main>
+<nav class="nav" aria-label="slides"></nav>
+<div class="hint">&larr; &rarr; or click</div>
+<script>
+const S = [...document.querySelectorAll("section")], nav = document.querySelector(".nav");
+let i = 0;
+S.forEach((_, k) => { const d = document.createElement("i"); d.onclick = (e) => { e.stopPropagation(); go(k); }; nav.appendChild(d); });
+function go(k) {
+  i = Math.max(0, Math.min(S.length - 1, k));
+  S.forEach((s, n) => s.classList.toggle("on", n === i));
+  [...nav.children].forEach((d, n) => d.classList.toggle("on", n === i));
+  history.replaceState(null, "", "#" + (i + 1));
+}
+addEventListener("keydown", (e) => {
+  if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); go(i + 1); }
+  if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); go(i - 1); }
+  if (e.key === "Home") go(0);
+  if (e.key === "End") go(S.length - 1);
+});
+document.querySelector(".deck").addEventListener("click", (e) => { if (!e.target.closest("iframe,a")) go(i + 1); });
+const fromHash = () => go((parseInt(location.hash.slice(1), 10) || 1) - 1);
+addEventListener("hashchange", fromHash);
+fromHash();
+</script>
+</body>
+</html>

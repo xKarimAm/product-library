@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COC - lessons from building a city out of your work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+/* Night city. The page uses the palette the dashboard itself draws at night,
+   so the deck and the product read as one thing. */
+:root{
+  color-scheme: dark;
+  --night:#120A2E;      /* ground */
+  --dusk:#241650;       /* raised panels */
+  --lilac:#C9C0DE;      /* slab faces, body text */
+  --mist:#9C92BD;       /* secondary text */
+  --amber:#F4C04E;      /* window light: the one bright thing */
+  --clay:#D4785A;       /* the villager, and only the villager */
+  --s-wait:#D4785A; --s-block:#FF4D5E; --s-state:#8B5CF6; --s-git:#3D7BFF; --s-tx:#1FBF75; --s-none:#7C6E92;
+  --pix:"Pixelify Sans","Segoe UI",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --code:"Cascadia Mono",Consolas,ui-monospace,monospace;
+  --nav:76px;
+}
+*{box-sizing:border-box}
+html{scroll-snap-type:y proximity;scroll-behavior:smooth;background:var(--night)}
+body{margin:0;background:var(--night);color:var(--lilac);font:400 17px/1.6 var(--body);
+  -webkit-font-smoothing:antialiased;padding-bottom:var(--nav)}
+::selection{background:var(--amber);color:var(--night)}
+:focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+a{color:var(--amber)}
+code{font:0.88em var(--code);color:#E9E2F7;background:rgba(201,192,222,.10);padding:.05em .35em;border-radius:3px}
+
+/* ---------------------------------------------------------------- slides */
+.slide{min-height:calc(100vh - var(--nav));scroll-snap-align:start;padding:9vh 6vw 6vh;position:relative}
+.wrap{max-width:1120px;margin:0 auto}
+.chap{font:500 15px var(--pix);color:var(--mist);margin:0 0 .9rem;letter-spacing:.02em}
+h1,h2,h3{font-family:var(--pix);font-weight:700;color:#F4EEFF;margin:0;line-height:1.05}
+h1{font-size:clamp(2.6rem,6.4vw,5.4rem);max-width:13ch}
+h2{font-size:clamp(2rem,4.2vw,3.3rem);max-width:20ch;margin-bottom:1.4rem}
+h3{font-size:1.25rem;line-height:1.2}
+.lede{font-size:1.2rem;max-width:60ch;color:var(--lilac)}
+p{max-width:68ch}
+.quiet{color:var(--mist)}
+blockquote{margin:1.6rem 0;padding:.2rem 0 .2rem 1.1rem;border-left:4px solid var(--clay);max-width:60ch;
+  font-style:italic;color:#EDE6FA}
+blockquote cite{display:block;font-style:normal;color:var(--mist);font-size:.9rem;margin-top:.3rem}
+
+/* Hard pixel shadows instead of soft blur: the city is pixel art, so is the chrome. */
+.panel{background:var(--dusk);border:2px solid #3A2A6E;box-shadow:6px 6px 0 #07031A;border-radius:4px}
+
+/* ------------------------------------------------------------ 1. the hero */
+.hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:5vw;align-items:center}
+.hero .lede{margin-top:1.4rem}
+.city{position:relative;aspect-ratio:16/10;overflow:hidden}
+.city iframe{position:absolute;left:0;top:0;width:1440px;height:900px;border:0;transform-origin:0 0;pointer-events:none}
+.city .fallback{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:2rem;color:var(--mist);background:var(--dusk)}
+/* display:grid above outranks the UA's [hidden] rule - lesson 22 in this very deck. */
+.city .fallback[hidden]{display:none}
+.city-cap{font-size:.92rem;color:var(--mist);margin-top:.8rem}
+.villager{display:inline-block;width:30px;height:27px;vertical-align:-6px;margin-right:.4rem}
+
+/* --------------------------------------------------------- 2. the problem */
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:1.2rem;align-items:stretch;margin-top:2rem}
+.flow .panel{padding:1.2rem 1.3rem}
+.flow .panel h3{margin-bottom:.5rem}
+.flow .arrow{align-self:center;font:700 2rem var(--pix);color:var(--amber)}
+.flow ul{margin:.4rem 0 0;padding-left:1.1rem}
+
+/* ----------------------------------------------------------- 3. why use it */
+.reasons{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.6rem 3rem;margin-top:1.8rem}
+.reason h3{color:var(--amber);margin-bottom:.35rem}
+.reason p{margin:0}
+
+/* -------------------------------------------------------------- 4. decoder */
+.decoder{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,6fr);gap:2.4rem;margin-top:1.6rem}
+.keys{display:flex;flex-direction:column;gap:.35rem}
+.keys button{all:unset;cursor:pointer;display:flex;align-items:center;gap:.8rem;padding:.55rem .8rem;border-radius:4px;
+  color:var(--lilac);border:2px solid transparent}
+.keys button:hover{background:rgba(201,192,222,.07)}
+.keys button[aria-selected="true"]{background:var(--dusk);border-color:#3A2A6E;color:#fff;box-shadow:4px 4px 0 #07031A}
+.keys button:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.sw{width:18px;height:18px;flex:none;border-radius:2px}
+.detail{padding:1.6rem 1.8rem;min-height:300px}
+.detail h3{font-size:1.6rem;margin-bottom:.8rem}
+.detail .why{color:var(--mist);margin-top:1rem}
+
+/* ---------------------------------------------------------------- 5. stack */
+.stack{margin-top:1.6rem;display:flex;flex-direction:column;gap:.7rem}
+.stack details{padding:0}
+.stack summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 28px;
+  gap:1.2rem;align-items:baseline;padding:1rem 1.3rem}
+.stack summary::-webkit-details-marker{display:none}
+.stack summary b{font:700 1.15rem var(--pix);color:#F4EEFF}
+.stack summary span{color:var(--mist)}
+.stack summary i{font:700 1.3rem var(--pix);font-style:normal;color:var(--amber);transition:rotate .18s}
+.stack details[open] summary i{rotate:45deg}
+.stack .body{padding:0 1.3rem 1.2rem;border-top:2px dashed #3A2A6E;margin:0 1.3rem;padding-left:0;padding-right:0}
+.stack .body p{margin:.9rem 0 0}
+
+/* ------------------------------------------------------------- 6. timeline */
+.line{display:flex;gap:0;margin-top:2.2rem;overflow-x:auto;padding-bottom:.6rem}
+/* A button centres its content vertically, so labels that wrap rode higher than
+   one-line ones. A top-aligned column keeps every date on the same line. */
+.line button{all:unset;cursor:pointer;flex:1 0 118px;display:flex;flex-direction:column;justify-content:flex-start;
+  text-align:left;padding:.9rem .3rem 0 0;border-top:4px solid #3A2A6E;position:relative}
+.line button::before{content:"";position:absolute;top:-11px;left:0;width:14px;height:14px;background:#3A2A6E;border-radius:2px}
+.line button[aria-selected="true"]{border-top-color:var(--amber)}
+.line button[aria-selected="true"]::before{background:var(--amber)}
+.line button:focus-visible{outline:3px solid var(--amber);outline-offset:4px}
+.line b{display:block;font:700 1rem var(--pix);color:#F4EEFF}
+.line small{color:var(--mist);font-size:.85rem}
+.moment{margin-top:1.6rem;padding:1.5rem 1.8rem}
+.moment h3{font-size:1.5rem;margin-bottom:.6rem}
+
+/* -------------------------------------------------------------- 7. lessons */
+.tools{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin:1.4rem 0 1.6rem}
+.chip{all:unset;cursor:pointer;padding:.38rem .85rem;border-radius:4px;border:2px solid #3A2A6E;color:var(--lilac);font-size:.95rem}
+.chip[aria-pressed="true"]{background:var(--lilac);color:var(--night);border-color:var(--lilac);font-weight:700}
+.chip:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.find{margin-left:auto;background:var(--dusk);border:2px solid #3A2A6E;color:#fff;border-radius:4px;padding:.45rem .8rem;
+  font:inherit;min-width:min(260px,100%)}
+.find::placeholder{color:var(--mist)}
+.count{color:var(--mist);font-size:.95rem;width:100%}
+.wall{columns:2 420px;column-gap:2.4rem}
+.lesson{break-inside:avoid;margin:0 0 1.9rem;padding-left:1rem;border-left:4px solid var(--c,#3A2A6E)}
+.lesson h3{font-size:1.12rem;margin-bottom:.4rem}
+.lesson .tag{font-size:.82rem;color:var(--c);font-weight:700}
+.lesson p{margin:.3rem 0 0;font-size:.98rem}
+.lesson .rule{color:#F4EEFF}
+.lesson .rule::before{content:"Rule: ";color:var(--amber);font-weight:700}
+.empty{color:var(--mist)}
+
+/* --------------------------------------------------------------- 8. ledger */
+.ledger{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:2.2rem 2.6rem;margin-top:2rem}
+.ledger div{border-top:4px solid var(--c,var(--amber));padding-top:.8rem}
+.ledger b{display:block;font:700 2.6rem/1 var(--pix);color:#F4EEFF}
+.ledger span{color:var(--mist);font-size:.95rem}
+
+/* ------------------------------------------------------------ 9. use it */
+.steps{counter-reset:s;list-style:none;padding:0;margin:1.8rem 0 0;display:flex;flex-direction:column;gap:1.4rem;max-width:860px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:44px 1fr;gap:1rem}
+.steps li::before{content:counter(s);font:700 1.5rem/1.3 var(--pix);color:var(--amber)}
+.steps h3{margin-bottom:.35rem}
+.cmd{display:flex;align-items:stretch;margin-top:.5rem;max-width:640px}
+.cmd pre{margin:0;flex:1;overflow-x:auto;padding:.6rem .9rem;background:#0A0520;border:2px solid #3A2A6E;border-right:0;
+  border-radius:4px 0 0 4px;font:.92rem var(--code);color:#EDE6FA}
+.cmd button{all:unset;cursor:pointer;padding:0 .9rem;border:2px solid #3A2A6E;border-radius:0 4px 4px 0;color:var(--amber);
+  font-size:.9rem;background:var(--dusk)}
+.cmd button:focus-visible{outline:3px solid var(--amber)}
+
+/* ---------------------------------------------------------- the skyline nav */
+/* One tower per chapter. Reaching a chapter lights its windows; the deck lights
+   the city as you go. Towers you have passed stay dim-lit. */
+.skyline{position:fixed;left:0;right:0;bottom:0;height:var(--nav);z-index:20;display:flex;align-items:flex-end;
+  gap:6px;padding:0 4vw 0;background:var(--night);border-top:2px solid #241650;overflow-x:auto}
+.skyline button{all:unset;cursor:pointer;position:relative;display:flex;flex-direction:column;justify-content:flex-end;flex:1 0 52px;max-width:120px}
+.skyline button:focus-visible{outline:3px solid var(--amber);outline-offset:-3px}
+.tower{background:#2A1D58;border-radius:2px 2px 0 0;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px;align-content:start}
+.tower i{display:block;height:5px;background:#17103A;transition:background .4s}
+.skyline .seen .tower i{background:#8C6B2E}
+.skyline .now .tower{background:#3A2A6E}
+.skyline .now .tower i{background:var(--amber)}
+.skyline .tip{position:absolute;bottom:calc(100% + 6px);left:0;white-space:nowrap;font:500 .82rem var(--pix);color:#fff;
+  background:var(--dusk);border:2px solid #3A2A6E;padding:.15rem .5rem;border-radius:3px;opacity:0;pointer-events:none}
+.skyline button:hover .tip,.skyline button:focus-visible .tip{opacity:1}
+.hint{margin-left:auto;align-self:center;flex:none;padding-left:1.5rem;font-size:.82rem;color:var(--mist)}
+
+@media (max-width:860px){
+  html{scroll-snap-type:none}
+  .slide{min-height:auto;padding:4.5rem 6vw 3rem}
+  .hero,.decoder{grid-template-columns:1fr}
+  .flow{grid-template-columns:1fr}
+  .flow .arrow{rotate:90deg;justify-self:center}
+  .stack summary{grid-template-columns:1fr 24px}
+  .stack summary span{grid-column:1}
+  .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- 1 --------------------------------------------------------------------- -->
+<section class="slide" id="s-city" data-title="The city">
+  <div class="wrap hero">
+    <div>
+      <p class="chap">Center of Claude</p>
+      <h1>Where did I leave off?</h1>
+      <p class="lede">Thirty-odd projects, each with its own Claude Code history. COC turns all of it into a
+        small city you can read from across the room: what is live, what is stuck, and what is waiting on you.</p>
+      <p class="quiet">This deck is the story of how it was built and everything it taught us. Use the arrow keys,
+        or the skyline at the bottom.</p>
+    </div>
+    <div>
+      <div class="city panel" id="cityFrame">
+        <iframe src="../poc_city.html" title="The COC city, running on demo data" tabindex="-1" loading="lazy"></iframe>
+        <div class="fallback" hidden>Open <code>poc_city.html</code> from the repository root to see the city running.</div>
+      </div>
+      <p class="city-cap">The real thing, live: the city POC running on made-up demo projects.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 2 --------------------------------------------------------------------- -->
+<section class="slide" id="s-problem" data-title="The problem">
+  <div class="wrap">
+    <p class="chap">Chapter 1</p>
+    <h2>The answer already existed. Nobody was reading it.</h2>
+    <p class="lede">Answering "where did I leave off?" meant opening each project folder by hand. Yet Claude Code
+      already writes a registry of every project, and each project keeps a session-state file that says exactly
+      where to pick up. COC builds nothing new. It reads what is already on disk.</p>
+    <div class="flow">
+      <div class="panel">
+        <h3>What it reads</h3>
+        <ul>
+          <li>Claude Code's own registry: transcripts under <code>~/.claude/projects</code></li>
+          <li>Each project's <code>.claude/session-state.md</code>: the "pick up here" line and its blockers</li>
+          <li>Git branch, handoff notes, transcript sizes</li>
+        </ul>
+      </div>
+      <div class="arrow" aria-hidden="true">&gt;</div>
+      <div class="panel">
+        <h3>What it is</h3>
+        <ul>
+          <li><code>coc.py</code>, a stdlib Python server on <code>127.0.0.1:7777</code></li>
+          <li><code>index.html</code>, one page of vanilla JS and SVG</li>
+          <li>Read-only over every project folder. It writes nothing.</li>
+        </ul>
+      </div>
+      <div class="arrow" aria-hidden="true">&gt;</div>
+      <div class="panel">
+        <h3>The three jobs</h3>
+        <ul>
+          <li><b>Morning triage:</b> what needs me first</li>
+          <li><b>Ambient board:</b> a second screen that stays honest all day</li>
+          <li><b>Launcher:</b> open a project in VS Code, or copy its resume command</li>
+        </ul>
+      </div>
+    </div>
+    <p class="quiet" style="margin-top:1.6rem">The owner explicitly did not pick "something to show people". Every visual
+      had to earn its place against those three jobs, and that rule decided most of what follows.</p>
+  </div>
+</section>
+
+<!-- 3 --------------------------------------------------------------------- -->
+<section class="slide" id="s-why" data-title="Why use it">
+  <div class="wrap">
+    <p class="chap">Chapter 2</p>
+    <h2>Why another builder would run this</h2>
+    <div class="reasons">
+      <div class="reason"><h3>Zero install</h3><p>Python's standard library and one HTML file. No pip, no npm, no build
+        step. <code>py coc.py</code> and open the browser.</p></div>
+      <div class="reason"><h3>Nothing to maintain</h3><p>It keeps no database and no state of its own. Delete it and
+        nothing is lost; every fact comes from files Claude Code and your projects already write.</p></div>
+      <div class="reason"><h3>Decisions come to you</h3><p>Start a blocker in a project's session-state with your
+        name, like <code>Me [M]: pick a vendor</code>, and it becomes the headline count and a messenger walking to
+        the front of the city. The name is set in one regex in <code>waiting_on_me()</code>; change it to yours.</p></div>
+      <div class="reason"><h3>Safe on a work machine</h3><p>Loopback only, a Host allow-list, a per-run token on every
+        API call, a nonce-based Content-Security-Policy, and launches that never go through a shell.</p></div>
+      <div class="reason"><h3>Readable at a glance</h3><p>Height, colour, light and motion each carry one fact, so the
+        state of every project reads without clicking anything.</p></div>
+      <div class="reason"><h3>Tested like it matters</h3><p>Mutation tests, raw-socket HTTP checks, and browser probes
+        that plant their own defects to prove they can fail. The lessons in this deck are why.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 --------------------------------------------------------------------- -->
+<section class="slide" id="s-read" data-title="Read the city">
+  <div class="wrap">
+    <p class="chap">Chapter 3</p>
+    <h2>Every pixel is a fact</h2>
+    <p class="lede">The rule since the first rebuild: motion and colour are data, never decoration. Pick an element to see what
+      it means and where it comes from.</p>
+    <div class="decoder">
+      <div class="keys" role="tablist" aria-label="City elements" id="keys"></div>
+      <div class="detail panel" role="tabpanel" id="keyDetail" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 --------------------------------------------------------------------- -->
+<section class="slide" id="s-stack" data-title="The stack">
+  <div class="wrap">
+    <p class="chap">Chapter 4</p>
+    <h2>Every technology choice, and what it beat</h2>
+    <p class="lede">The stack is small on purpose. Each line is a decision that was argued, and most were won by the
+      simpler option.</p>
+    <div class="stack" id="stack"></div>
+  </div>
+</section>
+
+<!-- 6 --------------------------------------------------------------------- -->
+<section class="slide" id="s-story" data-title="The story">
+  <div class="wrap">
+    <p class="chap">Chapter 5</p>
+    <h2>From a dull radial chart to a city, in under six weeks</h2>
+    <div class="line" role="tablist" aria-label="Timeline" id="line"></div>
+    <div class="moment panel" role="tabpanel" id="moment" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- 7 --------------------------------------------------------------------- -->
+<section class="slide" id="s-lessons" data-title="Lessons">
+  <div class="wrap">
+    <p class="chap">Chapter 6</p>
+    <h2>What it taught us</h2>
+    <p class="lede">Every lesson here cost real debugging time. Each one has the story and the rule we now follow.
+      Filter by theme or search.</p>
+    <div class="tools">
+      <div id="chips" role="group" aria-label="Filter by theme" style="display:flex;flex-wrap:wrap;gap:.6rem"></div>
+      <input class="find" id="find" type="search" placeholder="Search the lessons" aria-label="Search the lessons">
+      <div class="count" id="count" aria-live="polite"></div>
+    </div>
+    <div class="wall" id="wall"></div>
+  </div>
+</section>
+
+<!-- 8 --------------------------------------------------------------------- -->
+<section class="slide" id="s-proof" data-title="The proof">
+  <div class="wrap">
+    <p class="chap">Chapter 7</p>
+    <h2>How we know it works</h2>
+    <p class="lede">A test that cannot fail proves nothing, so the suites check themselves. These are results from the
+      most recent full runs: the villager suites on 2026-09-13 against a 24-project scan, the rest on 2026-10-14 to 16.</p>
+    <div class="ledger">
+      <div style="--c:var(--s-tx)"><b>31/31</b><span>planted bugs caught by the backend mutation suite</span></div>
+      <div style="--c:var(--s-tx)"><b>36/36</b><span>raw-socket HTTP checks: Host header, token, path traversal</span></div>
+      <div style="--c:var(--s-git)"><b>242</b><span>occlusion checks on villagers walking between cells</span></div>
+      <div style="--c:var(--s-git)"><b>22</b><span>cursor-proximity checks in normal mode, plus a reduced-motion pass</span></div>
+      <div style="--c:var(--s-state)"><b>53</b><span>city probe checks, 4 of them controls that plant the defect they guard</span></div>
+      <div style="--c:var(--s-block)"><b>11 of 18</b><span>planted bugs the first city probe missed, found by an independent review</span></div>
+      <div style="--c:var(--s-state)"><b>11 of 13</b><span>caught after the rewrite; the 2 survivors are documented risks</span></div>
+      <div style="--c:var(--s-wait)"><b>4</b><span>real fragments an independent audit found before this repo was pushed</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 --------------------------------------------------------------------- -->
+<section class="slide" id="s-use" data-title="Use it">
+  <div class="wrap">
+    <p class="chap">Chapter 8</p>
+    <h2>Run it on your own projects</h2>
+    <ol class="steps">
+      <li><div><h3>Start the dashboard</h3><p>Windows with Python 3 and its <code>py</code> launcher. No install step. Other platforms are untested, and the probes expect Chrome at its Windows path.</p>
+        <div class="cmd"><pre>py coc.py</pre><button type="button" data-copy="py coc.py">Copy</button></div>
+        <p class="quiet">Then open <code>http://127.0.0.1:7777</code>. The server lives as long as the terminal does.</p></div></li>
+      <li><div><h3>Give it something to read</h3><p>Keep a <code>.claude/session-state.md</code> in each project with a
+        <code>next_action</code> line. Put decisions that need you in <code>blockers</code>, starting with your name.
+        COC matches the name in <code>waiting_on_me()</code> in <code>coc.py</code>; it ships set to the author's,
+        so change that regex first.</p></div></li>
+      <li><div><h3>Check it is healthy</h3>
+        <div class="cmd"><pre>py coc.py --selftest</pre><button type="button" data-copy="py coc.py --selftest">Copy</button></div></div></li>
+      <li><div><h3>Build the city from your own data</h3><p>Save your server's <code>/api/projects</code> response as
+        <code>tools/poc_data.json</code> (git-ignored, never commit it). The API answers only with the
+        <code>X-COC-Token</code> header; the token is printed in the page the server serves. Then build and probe:</p>
+        <div class="cmd"><pre>py tools/build_poc.py</pre><button type="button" data-copy="py tools/build_poc.py">Copy</button></div>
+        <div class="cmd"><pre>py tools/pocprobe.py</pre><button type="button" data-copy="py tools/pocprobe.py">Copy</button></div>
+        <p class="quiet">The probe needs Google Chrome. It drives a headless copy over the DevTools protocol.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- 10 -------------------------------------------------------------------- -->
+<section class="slide" id="s-next" data-title="What's next">
+  <div class="wrap">
+    <p class="chap">Chapter 9</p>
+    <h2>Still open</h2>
+    <div class="reasons">
+      <div class="reason"><h3>Port the city into the dashboard</h3><p>The SimCity mechanics live in a generated POC
+        page. The next step is deciding whether they move into <code>index.html</code> for good.</p></div>
+      <div class="reason"><h3>Where the meter lives</h3><p>Keeping the demand meter clear of the city costs about 7% of
+        scale at 1600px. Moving it into the project rail would not cost scale, but the rail is hidden below 900px.</p></div>
+      <div class="reason"><h3>Villagers on empty lots</h3><p>A sleeping villager still lies on each unpowered lot. It
+        reads as "someone lives here", which an empty lot arguably should not.</p></div>
+      <div class="reason"><h3>A driver that cleans up</h3><p>The test driver leaves headless Chrome processes behind.
+        Killing the whole process tree would stop them piling up.</p></div>
+    </div>
+    <blockquote>I like our design now so much better, simplicity and the pixel art is so much better.
+      <cite>The owner, rejecting a three.js rebuild on 2026-09-13</cite></blockquote>
+  </div>
+</section>
+
+<nav class="skyline" id="skyline" aria-label="Chapters"><span class="hint" aria-hidden="true">Arrow keys move between chapters</span></nav>
+
+<script>
+/* ----------------------------------------------------------------- content */
+// The decoder: what each element of the city means. Colours match the city's own.
+const KEYS = [
+  { k: "Tower height", c: "#C9C0DE", d: "How much work the project holds: sessions times four plus prompts, log-scaled. "
+    + "Each recency tier has its own height cap, so a dormant folder with 30 old sessions never outgrows a project worked on this morning.",
+    w: "A first version used one cap for everyone, and the skyline argued against every other signal." },
+  { k: "Parapet colour", c: "#D4785A", d: "The project's state, in priority order: clay is a decision waiting on you, red is blocked, "
+    + "violet has a live session-state file, blue has a git branch, green has transcripts only.",
+    w: "It started as the roof colour of a hut and moved to the tower parapet, keeping the same meaning." },
+  { k: "Lit windows", c: "#F4C04E", d: "Recency. Lit amber means worked on this week, dim this month, dark dormant. At night every window lights.",
+    w: "The lit pattern is a fixed function of the project id, never random, because the scene repaints twice a minute." },
+  { k: "Crane", c: "#F4C04E", d: "Under construction: an active project with a live session-state file. The top floor is bare girders.",
+    w: "Construction is real state, not decoration." },
+  { k: "Dirt lot", c: "#6B4E36", d: "An unpowered lot: a registry entry with nothing on disk. Zoned, never built, with a dead streetlight.",
+    w: "This settled a two-week-old question about the empty registry stubs by neither hiding them nor folding them together." },
+  { k: "Villagers", c: "#D4785A", d: "One per project whose folder exists. Awake villagers work one of seven trades; dormant projects sleep. "
+    + "Messengers carry a pennant to the front when a decision waits; couriers carry a cube along your last context switch.",
+    w: "Sleepers never move: a walking villager on a dormant project would contradict the dormancy signal." },
+  { k: "Cars and trucks", c: "#3D7BFF", d: "Cars run between projects you touched in the last 24 hours, up to three at once, "
+    + "so more projects touched today means more cars. Trucks run supply trips to construction sites whatever else is happening.",
+    w: "Traffic is a signal, not ambience. Touch fewer than two projects in a day and no cars run." },
+  { k: "Day and night", c: "#8B5CF6", d: "The whole palette follows your local clock: dawn amber, midday as designed, dusk purple, night navy.",
+    w: "It is what makes a second-screen board feel alive across a working day." },
+  { k: "Demand meter", c: "#1FBF75", d: "Bottom left: three bars for projects waiting on you, active, and dormant, plus POP, the total session count.",
+    w: "SimCity's demand meter, re-mapped to triage. It says where to look before you read a label." },
+];
+
+// The stack: choice, what it beat, and why.
+const STACK = [
+  { c: "Python standard library server", v: "instead of FastAPI or Flask",
+    b: "Nothing gets pip-installed into a fragile system Python, so it runs anywhere Python does. <code>http.server</code> is enough "
+     + "for one local user, and the threat model is handled by hand: a Host allow-list, a per-run token, and a CSP nonce." },
+  { c: "One HTML file, vanilla JS, inline SVG", v: "instead of React or a build step",
+    b: "The page is a scene graph, and SVG already is one. No bundler means the deliverable is the file you read. "
+     + "A three.js rebuild was spiked and rejected in favour of the pixel art." },
+  { c: "2.5D projection in JavaScript", v: "instead of CSS 3D transforms",
+    b: "A rotated CSS container blurs small text, fights z-order and lays sprites flat. Projecting world coordinates to "
+     + "screen and drawing flat shapes keeps labels crisp and villagers upright." },
+  { c: "A hex lattice where one unit is one radius", v: "instead of hand-placed tiles",
+    b: "Choosing the world lattice so one world unit projects to exactly one hex radius makes the comb tessellate by "
+     + "construction: cells share edges, cannot overlap, and need no connecting lines." },
+  { c: "Pixel art from character maps", v: "instead of image sprites",
+    b: "The body, arms, legs and wave are rows of characters turned into SVG rects with crisp edges. A trade is a small "
+     + "prop drawn onto that same body, never a new sprite, so the creature stays identical in every job." },
+  { c: "One animation loop", v: "instead of a timer per villager",
+    b: "A single <code>requestAnimationFrame</code> loop drives everything that travels, villagers and vehicles, idles out "
+     + "when nothing moves, and never starts under reduced motion. One dispatcher on a slow interval decides who travels; "
+     + "cursor handling coalesces mouse moves into one frame of its own." },
+  { c: "A stdlib DevTools-protocol driver", v: "instead of Playwright or Selenium",
+    b: "The probes talk to headless Chrome over a raw WebSocket, so the test harness has no dependencies either. "
+     + "Assertions are measured off the live page, never read from source." },
+  { c: "A generated POC page", v: "instead of forking the dashboard",
+    b: "The SimCity city is spliced from <code>index.html</code> by <code>build_poc.py</code>, so the deliverable stays "
+     + "untouched and the experiment can always be rebuilt. Every splice fails loudly on a missing anchor, so a moved anchor stops the build." },
+];
+
+// The story.
+const MOMENTS = [
+  { d: "Sep 8", t: "A radial chart", b: "The first COC was a radial chart over the registry. It worked, and it was rejected as dull and not 3D." },
+  { d: "Sep 9", t: "Isometric, then a hive", b: "Rebuilt the same day as an isometric slab field, then as a honeycomb of hexagonal cells "
+    + "with state-coloured roofs and one villager per project. Gradients moved to oklch, because sRGB passes through a muddy grey middle." },
+  { d: "Sep 10", t: "Trades, then movement", b: "Active villagers got SimCity-style trades: farm, swim, build, fish, paint, read, eat. "
+    + "Then they moved into the depth-sorted scene and started travelling: wanderers, messengers carrying decisions, couriers tracing context switches." },
+  { d: "Sep 13", t: "Greetings, and two cuts", b: "Villagers wave when the cursor comes near, and sleepers open their eyes. "
+    + "A three.js rebuild was spiked and rejected. Eye tracking was built, seen, and cut." },
+  { d: "Sep 22", t: "Huts become towers", b: "The hive merged with SimCity: skyscrapers, cranes on live work, and a project roster. "
+    + "Eleven of thirteen towers were first invisible, from one NaN." },
+  { d: "Sep 23", t: "Four mechanics approved", b: "Day and night, roads and traffic, a power grid for empty projects, and a demand meter." },
+  { d: "Oct 14", t: "The city runs", b: "All four built, plus a full-height project rail. An independent review found the probe missed 11 of 18 planted bugs; "
+    + "it was rewritten to 53 checks." },
+  { d: "Oct 16", t: "Shipped, scrubbed", b: "Exported to a private repo with every real project name replaced and a demo city built from "
+    + "made-up data. An independent audit caught four real fragments first." },
+];
+
+// The lessons. Themes take the city's own state colours.
+const THEMES = {
+  data:    { n: "Data truth", c: "#1FBF75" },
+  render:  { n: "Rendering", c: "#3D7BFF" },
+  motion:  { n: "Motion", c: "#8B5CF6" },
+  testing: { n: "Testing", c: "#FF4D5E" },
+  process: { n: "Process", c: "#F4C04E" },
+  ship:    { n: "Shipping", c: "#D4785A" },
+};
+const LESSONS = [
+  ["data", "A field's name is not its behaviour",
+    "<code>prompts</code> is a list of prompt strings, not a count. Adding it to a number concatenated text, the height became NaN, "
+    + "and an SVG polygon with NaN in it draws nothing and throws nothing. Eleven of thirteen towers vanished while every check said fine.",
+    "Read what a field holds before using it, and guard geometry against non-finite values."],
+  ["data", "The folder slug is lossy",
+    "The registry folder name for <code>D:\\A B\\c</code> and <code>D:\\A B c</code> can be identical, so a path rebuilt from it can be wrong.",
+    "Take the real path from the <code>cwd</code> field of the first record that carries one, never from the slug."],
+  ["data", "The newest transcript is often the wrong one",
+    "The most recent file can be a tiny session with no prompt while the real work sits in a large file from the same day.",
+    "Walk newest-first until a file actually yields what you need."],
+  ["data", "Handoff notes grow at the bottom",
+    "Append-only notes put the newest entry last. Reading the head showed months-old state as current.",
+    "Know which end of a log is now, and tail it."],
+  ["data", "The locale codec lies",
+    "The default encoding here is cp1252, the corpus has Arabic, and one byte-order mark silently voided a whole frontmatter parse.",
+    "Always open text with an explicit encoding (<code>utf-8-sig</code>)."],
+  ["data", "A directory's mtime does not move when a file grows",
+    "On NTFS, appending to a transcript changes no directory mtime, so a cache keyed on it served the first snapshot forever.",
+    "Use a short TTL (two seconds) instead of guessing an invalidation signature."],
+  ["data", "The same file comes in three shapes",
+    "Session-state files appear as inline-JSON frontmatter, folded YAML block scalars, and plain markdown with no frontmatter at all.",
+    "Collect real samples before writing a parser, and test against each."],
+  ["data", "Baked data goes stale on its own",
+    "Recency is measured against the current clock, so a scan frozen three weeks earlier would have rendered an empty live district.",
+    "Refresh baked data before judging a build; demo data stores ages, not dates."],
+  ["render", "Project in code, not with CSS 3D",
+    "A CSS 3D container blurs small text, fights z-order and lays sprites flat on the floor.",
+    "Project world coordinates to screen yourself and draw flat shapes."],
+  ["render", "Derive spacing, never eyeball it",
+    "A tile spans twice its width in depth. Rows spaced by eye overlapped by about a quarter of a tile.",
+    "Pick a lattice where the arithmetic guarantees no gaps and no overlaps."],
+  ["render", "Bounding boxes cannot judge overlap",
+    "Two hexagons that only share an edge still have overlapping screen bounding boxes, so a box test reports overlap forever.",
+    "Judge overlap in world space."],
+  ["render", "Paint order is a contract",
+    "When the villager layer came after the label layer, villagers painted over the labels they stood beside.",
+    "Labels outrank sprites, and every sprite stays inside its own cell."],
+  ["render", "Never use randomness in a repainting scene",
+    "The layout repaints twice a minute. A random window pattern would shimmer on every poll.",
+    "Any per-cell pattern must be a fixed function of the project id."],
+  ["render", "Move the eyes and the face opens",
+    "The eye sockets are holes in the body sprite; only the pupils cover them. Moving the pupils left two background-coloured holes in the face. "
+    + "The test encoded the same wrong idea, so it agreed with the bug.",
+    "A check derived from the same model as the code cannot catch the code."],
+  ["render", "A prop must not be the body's colour",
+    "A clay-coloured book spine vanished into the clay body and read as two loose white squares. A one-row cap did not read as a hat.",
+    "Give props their own colour and enough rows to read at scale."],
+  ["motion", "Resolve every destination live",
+    "Each poll re-slots the comb, so a coordinate captured at dispatch can belong to another project seconds later.",
+    "Store targets as ids and resolve them every frame; carry movers with their cell when it moves."],
+  ["motion", "Re-check reduced motion after every new loop",
+    "A lamp flicker added later was the one animation still running with motion reduced, and a mouse handler booked a frame before checking.",
+    "Gate before scheduling anything, and test from first paint by counting frames."],
+  ["motion", "Thresholds need hysteresis",
+    "With one greeting radius, a cursor resting on the boundary flipped the wave on and off every frame: a twitch, not a wave.",
+    "Use separate enter and exit thresholds."],
+  ["motion", "Strict priority starves the bottom",
+    "With decisions always waiting, messengers were re-eligible before a wanderer ever got a slot; ambience never ran.",
+    "Use a weighted draw, and count cooldowns from arrival, not departure."],
+  ["motion", "One loop, one interval",
+    "Every new mover rides the existing animation loop and dispatcher. Stopping the dispatcher must let the loop die by itself.",
+    "Never start a second loop; it doubles the invariants to prove."],
+  ["testing", "A check that passes may be measuring nothing",
+    "A truncation probe pointed at the label wrapper always said no truncation; the element that clips was a child.",
+    "Ask what would have to break for the test to fail, then break it."],
+  ["testing", "Plant the defect the check guards",
+    "One control hid the meter with the <code>hidden</code> attribute, but the meter's own CSS display rule outranks it, so the control tested nothing. "
+    + "An earlier guard read a computed transform, which reports none for an SVG transform attribute.",
+    "Give the checks most likely to pass vacuously a control that must be caught on every run."],
+  ["testing", "Expectations must come from outside the code",
+    "The first city probe built its expected values with the page's own helpers, so a mutant that switched off the power grid still passed. 11 of 18 planted bugs survived.",
+    "Derive expected values independently: from the data file, from raw fields, through the public path."],
+  ["testing", "Fixed sleeps lie",
+    "A cold scan takes seconds, so a fixed wait reported zero projects. The traffic dispatcher starts three seconds after render, so clearing it earlier cleared nothing.",
+    "Wait for the condition, not the clock."],
+  ["testing", "The window is not the viewport",
+    "A 1600 by 1000 headless window gave a 1582 by 904 viewport, so measurements at 1600 were not at 1600.",
+    "Set the viewport explicitly through the DevTools protocol."],
+  ["testing", "Stop every background timer",
+    "The 30-second poll rebuilt the scene in the middle of assertions, and a suite failed once and passed on rerun with nothing changed.",
+    "Give every interval a handle and clear it at the top of each harness."],
+  ["testing", "Harnesses leak too",
+    "Terminating the launcher left headless Chrome renderers alive: 262 piled up, and the contention made probe calls time out.",
+    "Before blaming the page for a timeout, count the processes your own tests left behind."],
+  ["testing", "Live text needs slack, or a measurement",
+    "A label gate passed at 820px by under two pixels, then collided once the meta text grew. The label text is live data.",
+    "Give layout thresholds real slack, or measure the rendered result."],
+  ["process", "Fresh eyes find what self-checks miss",
+    "Independent reviewers with only the files and the rules found the real cause of the broken eyes, a second static arm, the meter covering a cell, and real data in test fixtures.",
+    "After any change, an independent reviewer gets the diff and the facts, never your reasoning."],
+  ["process", "Generate, never hand-edit",
+    "The city POC is spliced from the dashboard, and a bare string replace on a moved anchor silently ships a missing feature.",
+    "Make every splice assert its anchor, and rebuild instead of editing output."],
+  ["process", "Cut what does not serve the job",
+    "A three.js rebuild was spiked and rejected because the simple pixel art read better. Eye tracking was built, shown and cut "
+    + "because the eyes could not move without detaching from the face.",
+    "Judge a feature by how it looks and reads in the real build, and be willing to delete working code."],
+  ["ship", "Scrub, then prove the scrub",
+    "Removing the data file was not enough: test fixtures had been copied from real project state, including a commit hash and a colleague's name.",
+    "Export from an allow-list, replace real names, and leak-scan every file before pushing."],
+  ["ship", "Shell heredocs eat a backslash",
+    "Windows paths written through a quoted heredoc lost one escape level, corrupting a regex and a YAML string.",
+    "Write files with backslashes through an editor tool, not the shell."],
+];
+
+/* --------------------------------------------------------------- helpers */
+const $ = (s) => document.querySelector(s);
+const el = (tag, attrs, html) => {
+  const n = document.createElement(tag);
+  for (const k in (attrs || {})) n.setAttribute(k, attrs[k]);
+  if (html != null) n.innerHTML = html;
+  return n;
+};
+
+/* A tablist with arrow-key movement, used by the decoder and the timeline. */
+function tabs(list, items, label, render) {
+  const btns = items.map((it, i) => {
+    const b = el("button", { role: "tab", type: "button", "aria-selected": "false", tabindex: "-1" }, label(it));
+    b.addEventListener("click", () => pick(i));
+    b.addEventListener("keydown", (e) => {
+      const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+      if (!d) return;
+      e.preventDefault(); e.stopPropagation();
+      pick((i + d + items.length) % items.length, true);
+    });
+    list.appendChild(b);
+    return b;
+  });
+  function pick(i, focus) {
+    btns.forEach((b, j) => { b.setAttribute("aria-selected", String(i === j)); b.tabIndex = i === j ? 0 : -1; });
+    render(items[i]);
+    if (focus) btns[i].focus();
+  }
+  pick(0);
+}
+
+/* ----------------------------------------------------------- the decoder */
+tabs($("#keys"), KEYS,
+  (k) => '<span class="sw" style="background:' + k.c + '"></span>' + k.k,
+  (k) => { $("#keyDetail").innerHTML = "<h3>" + k.k + "</h3><p>" + k.d + '</p><p class="why">' + k.w + "</p>"; });
+
+/* -------------------------------------------------------------- the stack */
+STACK.forEach((s, i) => {
+  const d = el("details", { class: "panel" });
+  if (i === 0) d.open = true;
+  d.innerHTML = "<summary><b>" + s.c + "</b><span>" + s.v + '</span><i aria-hidden="true">+</i></summary>'
+    + '<div class="body"><p>' + s.b + "</p></div>";
+  $("#stack").appendChild(d);
+});
+
+/* ----------------------------------------------------------- the timeline */
+tabs($("#line"), MOMENTS,
+  (m) => "<b>" + m.d + "</b><small>" + m.t + "</small>",
+  (m) => { $("#moment").innerHTML = "<h3>" + m.d + ": " + m.t + "</h3><p>" + m.b + "</p>"; });
+
+/* ------------------------------------------------------------ the lessons */
+let theme = "all";
+const chips = $("#chips");
+[["all", "All themes", "#C9C0DE"]].concat(Object.keys(THEMES).map((k) => [k, THEMES[k].n, THEMES[k].c]))
+  .forEach(([k, n]) => {
+    const b = el("button", { class: "chip", type: "button", "aria-pressed": String(k === "all") }, n);
+    b.addEventListener("click", () => {
+      theme = k;
+      chips.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c === b)));
+      drawLessons();
+    });
+    chips.appendChild(b);
+  });
+$("#find").addEventListener("input", drawLessons);
+function drawLessons() {
+  const q = $("#find").value.trim().toLowerCase();
+  const strip = (h) => h.replace(/<[^>]+>/g, "");
+  const shown = LESSONS.filter(([t, h, s, r]) => (theme === "all" || t === theme)
+    && (!q || (h + " " + strip(s) + " " + strip(r)).toLowerCase().includes(q)));
+  $("#wall").innerHTML = shown.length ? shown.map(([t, h, s, r]) =>
+      '<article class="lesson" style="--c:' + THEMES[t].c + '"><span class="tag">' + THEMES[t].n + "</span>"
+      + "<h3>" + h + "</h3><p>" + s + '</p><p class="rule">' + r + "</p></article>").join("")
+    : '<p class="empty">No lesson matches that. Try a broader word, such as "test" or "data".</p>';
+  $("#count").textContent = shown.length === LESSONS.length
+    ? LESSONS.length + " lessons" : shown.length + " of " + LESSONS.length + " lessons";
+}
+drawLessons();
+
+/* ------------------------------------------------------------ copy buttons */
+document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied"; }
+  catch (e) { b.textContent = "Select the text to copy"; }
+  setTimeout(() => { b.textContent = "Copy"; }, 1800);
+}));
+
+/* ------------------------------------------------------- the live city */
+// The iframe is drawn at 1440x900 and scaled to the frame, so the city keeps
+// its desktop layout at any size. If it fails to load, say where to find it.
+const frame = $("#cityFrame"), ifr = frame.querySelector("iframe");
+function fitCity() { ifr.style.transform = "scale(" + (frame.clientWidth / 1440) + ")"; }
+addEventListener("resize", fitCity); fitCity();
+ifr.addEventListener("error", () => { frame.querySelector(".fallback").hidden = false; });
+
+/* ------------------------------------------------------- the skyline nav */
+const slides = [...document.querySelectorAll(".slide")];
+const sky = $("#skyline");
+const heights = [44, 58, 50, 66, 54, 62, 70, 48, 56, 40];   // a fixed skyline, never random
+const towers = slides.map((s, i) => {
+  const b = el("button", { type: "button", "aria-label": "Go to " + s.dataset.title });
+  const rows = Math.max(2, Math.round((heights[i % heights.length] - 12) / 9));
+  b.innerHTML = '<span class="tip">' + s.dataset.title + '</span><span class="tower" style="height:'
+    + heights[i % heights.length] + 'px">' + "<i></i>".repeat(rows * 3) + "</span>";
+  b.addEventListener("click", () => go(i));
+  sky.insertBefore(b, sky.querySelector(".hint"));
+  return b;
+});
+let cur = 0;
+const seen = new Set([0]);
+function mark(i) {
+  cur = i; seen.add(i);
+  towers.forEach((t, j) => {
+    t.classList.toggle("now", j === i);
+    t.classList.toggle("seen", seen.has(j) && j !== i);
+    if (j === i) t.setAttribute("aria-current", "step"); else t.removeAttribute("aria-current");
+  });
+}
+function go(i) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  slides[i].scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth" });
+}
+const io = new IntersectionObserver((es) => {
+  es.forEach((e) => { if (e.isIntersecting) mark(slides.indexOf(e.target)); });
+}, { rootMargin: "-45% 0px -45% 0px" });
+slides.forEach((s) => io.observe(s));
+mark(0);
+
+addEventListener("keydown", (e) => {
+  const t = e.target;
+  if (t.matches("input,textarea") || t.closest("[role=tablist]") || e.ctrlKey || e.metaKey || e.altKey) return;
+  let next = ["ArrowDown", "PageDown", "ArrowRight"].includes(e.key) || (e.key === " " && !t.matches("button,summary"));
+  let prev = ["ArrowUp", "PageUp", "ArrowLeft"].includes(e.key);
+  // A chapter taller than the screen (the lessons wall) scrolls normally until
+  // its end is in view; only then does the key move to the next chapter.
+  const r = slides[cur].getBoundingClientRect(), room = innerHeight - sky.offsetHeight;
+  if (next && ["ArrowDown", "PageDown", " "].includes(e.key) && r.bottom > room + 8) next = false;
+  if (prev && ["ArrowUp", "PageUp"].includes(e.key) && r.top < -8) prev = false;
+  if (next) { e.preventDefault(); go(cur + 1); }
+  else if (prev) { e.preventDefault(); go(cur - 1); }
+  else if (e.key === "Home") { e.preventDefault(); go(0); }
+  else if (e.key === "End") { e.preventDefault(); go(slides.length - 1); }
+});
+</script>
+</body>
+</html>

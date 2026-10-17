@@ -1,0 +1,11 @@
+# Real project scans and anything baked from them - never commit these.
+tools/poc_data*.json
+tools/export_repo.py
+# Test debris
+tools/cprof_*/
+tools/*.png
+*.png
+__pycache__/
+*.bak
+.claude/
+.remember/
