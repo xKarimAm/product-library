@@ -1,28 +1,79 @@
 # Product Library
 
+![Product Library at night: 20 projects as a SimCity-style city](docs/city-night.png)
+
+**Every project you've ever started with Claude Code, as a living SimCity-style city.** So none of
+your prototypes get lost, and you can see at a glance where you left off and whether your notes
+are still true.
+
+> Unofficial project. Not affiliated with or endorsed by Anthropic. "Claude" and "Claude Code" are
+> Anthropic's names, used here only to say what this works with.
+
+- **Every project gets a building.** Dirt lot (never got going), tent (just started), low-rise
+  (finding its footing), tower (lots of work). Colour is state: clay = a decision waiting on you,
+  red = blocked on someone else, violet = has a checkpoint.
+- **It notices when your notes lie.** If you commit or work after your last note, the project goes
+  STALE and its readiness gate fails.
+- **It checks evidence instead of trusting it.** A cited commit must exist in the repo, and a quoted
+  sentence must appear word for word in the file it cites.
+- **Every building explains itself.** Optional "who it's for" and "why it matters" lines, so a
+  project found months later still makes sense.
+
+## Privacy
+
+Runs **entirely on your machine**. It only **reads** what's already on disk (Claude Code's local
+session history, git, and one small checkpoint file per project) and never writes to your projects
+or to `~/.claude`. The server listens on `127.0.0.1` only. No accounts, no telemetry, no network
+calls, no dependencies.
+
+## Quick start
+
+**You need:** Python 3 (tested on 3.13, standard library only, nothing to install), git, and
+Claude Code already used on this machine (Product Library reads `~/.claude/projects`).
+
+```bash
+git clone https://github.com/xxthemayourxx/product-library.git
+cd product-library
+```
+
+Start it, then open http://127.0.0.1:7777:
+
+| Windows | macOS / Linux |
+|---|---|
+| `py coc.py` | `python3 coc.py` |
+
+Want to see it full of buildings first? Run the demo city (20 made-up projects, nothing of yours is
+read): `py demo/make_demo.py --serve` on Windows, `python3 demo/make_demo.py --serve` elsewhere.
+
+**Give your projects a checkpoint** (optional, and what makes the city smart). Install the
+`/coc-checkpoint` skill by copying its folder into your Claude Code skills:
+
+| Windows (PowerShell) | macOS / Linux |
+|---|---|
+| `mkdir -Force "$HOME\.claude\skills" > $null; Copy-Item -Recurse skills\coc-checkpoint "$HOME\.claude\skills\"` | `mkdir -p ~/.claude/skills && cp -r skills/coc-checkpoint ~/.claude/skills/` |
+
+Then type `/coc-checkpoint` at the end of a Claude Code session. It drafts a small
+`.claude/session-state.md` (stage, next step, proof, blockers, who it's for, why it matters) and
+writes it once you approve.
+
+**Platform note:** built and tested on **Windows**. The code is plain cross-platform Python and
+should run on macOS and Linux, but that's untested; the "Open in VS Code" button needs the `code`
+command on your PATH there. Issues and fixes are welcome.
+
+## Run the checks
+
+    py coc.py --selftest     # assert-based tests, no server, no network (python3 on macOS/Linux)
+
+## Docs
+
+- **[DEMO.md](DEMO.md):** presenting the demo city, with a talk track.
+- **`docs/presentation.html`:** the short talk (what it is, why, lessons, tech). Arrow keys move slides.
+- **`docs/lessons-learned.html`:** the deep dive: every technology choice and 33 lessons learned.
+- **[SECURITY.md](SECURITY.md):** report vulnerabilities privately. **[LICENSE](LICENSE):** MIT.
+
 (Formerly COC, Center of Claude. Files and env vars keep the `coc` name.)
 
-A local, read-only dashboard over every project you run Claude Code in, drawn as a
-pixel-art SimCity-style city. How far along a project is reads as its building (dirt lot, tent,
-low-rise, tower), its colour is its state, and the city has villagers, traffic, a day/night
-cycle, searchlights and a project rail with a colour legend.
-
-**Presenting it?** `docs/presentation.html` is the short talk: what it is, why, what builders can
-learn, the tech. Arrow keys move between slides.
-
-**Going deeper:** `docs/lessons-learned.html` is an interactive
-deck covering why this exists, how to read the city, every technology choice and
-what it beat, the build story, and 33 lessons learned. It works as a presentation:
-arrow keys move between chapters.
-
-Python standard library only - nothing to install.
-
-## Run the live dashboard
-
-    py coc.py              # then open http://127.0.0.1:7777
-    py coc.py --selftest   # assert-based checks, no server
-
-## Live demo
+## Presenting the demo city
 
     py demo/make_demo.py --serve   # then open http://127.0.0.1:7777
 

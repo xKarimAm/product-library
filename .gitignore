@@ -9,3 +9,4 @@ __pycache__/
 *.bak
 .claude/
 .remember/
+!docs/city-night.png
