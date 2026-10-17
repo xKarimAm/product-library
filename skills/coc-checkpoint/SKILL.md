@@ -39,7 +39,9 @@ Write each value on one line, in this key order. Double-quote any value containi
 | `last_updated` | now, ISO-8601 with offset, e.g. `2026-10-17T16:56:00+03:00` |
 | `current_task` | the piece of work in flight, under 80 characters |
 | `next_action` | the first concrete step a fresh session takes, specific enough to start without asking: name the file, command or decision |
-| `proof` | the observable evidence that the last step worked, quoted from this session: a command with its result (`selftest OK`, `53/53 passed`), a commit hash written as `commit <hash>` (Product Library checks it exists in the repo), a URL. With no evidence yet, write `none yet - ` plus what would prove it |
+| `proof` | the observable evidence that the last step worked, quoted from this session: a command with its result (`selftest OK`, `53/53 passed`), a commit hash written as `commit <hash>` (Product Library checks it exists in the repo), a quote written as `docs/notes.md: 'exact words'` (checked word for word against that file, inside this project), a URL. With no evidence yet, write `none yet - ` plus what would prove it |
+| `for` | who this is for, in a few words: a person, a team, or `me, when ...`. The catalog card: future-you should know at a glance |
+| `bet` | why it matters: what you are betting this will change or save. If it rests on evidence, quote it as `file: 'exact words'` |
 | `blockers` | a JSON list on one line: `["Me [M]: pick a merge order", "Sam [A]: register the app"]`. Every open entry starts with its owner as `Name [Initial]:`. Closed entries start `DONE YYYY-MM-DD:`. Use `[]` when nothing blocks |
 
 `Me [M]:` marks a decision waiting on the user; Product Library counts these as "waiting on you".
@@ -66,6 +68,8 @@ last_updated: 2026-10-17T16:56:00+03:00
 current_task: drift detection and readiness gate in COC
 next_action: "rebuild poc_city.html with py tools/build_poc.py, then run py tools/pocprobe.py"
 proof: "py coc.py --selftest -> selftest OK; commit 39be42f"
+for: "me, picking a project back up after weeks away"
+bet: "a note I can trust saves re-reading a whole transcript"
 blockers: ["Me [M]: decide whether to push coc-drift-gate", "DONE 2026-10-17: traffic probe fixed"]
 ---
 ```

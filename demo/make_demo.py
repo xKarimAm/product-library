@@ -49,13 +49,15 @@ PROJECTS = [
         "state_age": 2,
         "state": {"status": "done", "stage": "ship", "current_task": "v1 calculator",
                   "next_action": "tag v1.0 and add a usage example for parentheses to the README",
-                  "proof": TESTS, "blockers": []},
+                  "proof": TESTS, "blockers": [],
+                  "for": "anyone who wants exact arithmetic without eval()",
+                  "bet": "a parser I trust beats a one-liner that can run arbitrary code"},
         "expect": {"gate": "pass", "gaps": [], "drift": None, "waiting": 0, "stage": "ship"},
     },
     {
         "name": "chatbot-frontend",
         "commits": [(30, "Chat UI: message log and canned replies", ["index.html", ".gitignore"]),
-                    (2, "Typing indicator and README", ["README.md"])],
+                    (2, "Typing indicator, README and tester feedback", ["README.md", "FEEDBACK.md"])],
         "sessions": [(30.5, ["build a chatbot front end in one html file"]),
                      (5, ["add a typing indicator"]),
                      # Ends BEFORE the checkpoint: the demo's 10s grace would flag a tail.
@@ -65,6 +67,8 @@ PROJECTS = [
         "state": {"status": "active", "stage": "build", "current_task": "chat UI polish",
                   "next_action": "wire reply() in index.html to the chosen provider API",
                   "proof": "opened index.html in Chrome: greeting, typing indicator and 3 canned replies render",
+                  "for": "people who want to try a model in a browser tab",
+                  "bet": "FEEDBACK.md: 'I just want to try a model without installing anything'",
                   "blockers": ["Me [M]: pick the model provider (OpenRouter or Anthropic API)",
                                "DONE 2026-10-16: message bubbles render"]},
         "expect": {"gate": "pass", "gaps": [], "drift": None, "waiting": 1, "stage": "build"},
@@ -78,7 +82,9 @@ PROJECTS = [
         "state_age": 6,
         "state": {"status": "active", "stage": "verify", "current_task": "streak edge cases",
                   "next_action": "run a week of real check-ins through habits.py and compare streaks by hand",
-                  "proof": TESTS, "blockers": []},
+                  "proof": TESTS, "blockers": [],
+                  "for": "me, building one habit at a time",
+                  "bet": "a streak I can see keeps me going on bad days"},
         "expect": {"gate": "fail", "gaps": ["fresh"], "drift": "commit", "waiting": 0, "stage": "verify"},
     },
     {
@@ -91,7 +97,7 @@ PROJECTS = [
                   "next_action": "continue", "proof": None,
                   "blockers": ["Sam [S]: confirm we can use the short.link domain",
                                "rate limiting is still undecided"]},
-        "expect": {"gate": "fail", "gaps": ["next_action", "blockers_owned", "proof"],
+        "expect": {"gate": "fail", "gaps": ["next_action", "blockers_owned", "proof", "card"],
                    "drift": None, "waiting": 0, "stage": "define"},
     },
     {
@@ -106,7 +112,9 @@ PROJECTS = [
         "fake_commit": "4f9e2a1",
         "state": {"status": "done", "stage": "ship", "current_task": "v1 pomodoro timer",
                   "next_action": "add a --work flag so the block length is not fixed at 25 minutes",
-                  "proof": TESTS, "blockers": []},
+                  "proof": TESTS, "blockers": [],
+                  "for": "me, when I need to focus for an hour",
+                  "bet": "short timed blocks beat open-ended sessions"},
         "expect": {"gate": "pass", "gaps": ["proof_commit"], "drift": None, "waiting": 0, "stage": "ship"},
     },
     {
@@ -170,7 +178,7 @@ def extra(i, name, about, kind, n, age, nxt):
             p["state"] = {"status": "blocked", "stage": "define", "current_task": about,
                           "next_action": "continue", "proof": None,
                           "blockers": ["the API quota is still unknown"]}
-            p["expect"] = {"gate": "fail", "gaps": ["next_action", "blockers_owned", "proof"],
+            p["expect"] = {"gate": "fail", "gaps": ["next_action", "blockers_owned", "proof", "card"],
                            "drift": None, "waiting": 0, "stage": "define"}
         return p
     stage = STAGES[i % 3]
@@ -179,13 +187,23 @@ def extra(i, name, about, kind, n, age, nxt):
     p["state"] = {"status": "active", "stage": stage, "current_task": about,
                   "next_action": "decide, then wire it into main.py" if waiting else nxt,
                   "proof": "py main.py --selftest -> OK",
-                  "blockers": [nxt] if waiting else []}
+                  "blockers": [nxt] if waiting else [],
+                  "for": "me first, then friends who asked for it",
+                  "bet": about + " in one step, instead of by hand"}
     p["expect"] = {"gate": "fail" if kind == "stale" else "pass", "gaps": ["fresh"] if kind == "stale" else [],
                    "drift": "commit" if kind == "stale" else None, "waiting": int(waiting), "stage": stage}
     return p
 
 
 PROJECTS += [extra(i, *row) for i, row in enumerate(EXTRA)]
+
+# The tallest tower quotes a user who never said that: the notes say two hours
+# a week, the card claims two hours a day. Product Library reads the file.
+_inv = next(p for p in PROJECTS if p["name"] == "invoice-parser")
+_inv["files"]["NOTES.md"] = "Sam (accounts): we re-type every invoice total by hand,\nabout two hours a week.\n"
+_inv["commits"][1] = (_inv["commits"][1][0], _inv["commits"][1][1], ["main.py", "NOTES.md"])
+_inv["state"]["bet"] = "NOTES.md: 'we re-type every invoice total by hand, about two hours a day'"
+_inv["expect"]["gaps"] = ["proof_quote"]
 
 
 def iso(age_h):
@@ -234,6 +252,9 @@ def write_state(path, age_h, st):
              'current_task: "%s"' % st["current_task"], 'next_action: "%s"' % st["next_action"]]
     if st["proof"]:
         lines.append('proof: "%s"' % st["proof"])
+    for key in ("for", "bet"):                 # the catalog card, when the scenario has one
+        if st.get(key):
+            lines.append('%s: "%s"' % (key, st[key]))
     lines += ["blockers: " + json.dumps(st["blockers"], ensure_ascii=False), "---", "", "## Notes", ""]
     fp = os.path.join(path, ".claude", "session-state.md")
     os.makedirs(os.path.dirname(fp), exist_ok=True)

@@ -2333,6 +2333,12 @@ function openBubble(id) {
   const proof = p.proof
     ? `<div class="gate"><div class="lead">PROOF</div><p class="why">${esc(p.proof)}</p></div>`
     : "";
+  // The catalog card: who it is for and why it mattered, so a building found
+  // months later explains itself.
+  const card = p.for || p.bet
+    ? `<div class="gate">` + (p.for ? `<div class="lead">FOR</div><p class="why">${esc(p.for)}</p>` : "")
+      + (p.bet ? `<div class="lead">WHY IT MATTERS</div><p class="why">${esc(p.bet)}</p>` : "") + `</div>`
+    : "";
 
   const gate = p.gate
     ? `<div class="gate"><div class="lead">GATE &middot; ${p.gate === "fail" ? "<b>FAIL</b>" : "PASS"}`
@@ -2352,7 +2358,7 @@ function openBubble(id) {
   acts.push('<button type="button" class="ghost" data-act="full">Full view</button>');
 
   b.innerHTML = `<h2>${esc(p.name)}${badge}</h2><div class="line">${bits.join(" &middot; ")}</div>`
-    + body + proof + gate + sources + flags + `<div class="acts">${acts.join("")}</div>`;
+    + body + card + proof + gate + sources + flags + `<div class="acts">${acts.join("")}</div>`;
 
   // Source-row swatches carry the module colour, set through CSSOM because a
   // style attribute would be blocked by the nonce policy.
@@ -2461,6 +2467,8 @@ async function projectSheet(id) {
         : '<p class="prose">Every check passes.</p>'));
   }
   if (st.next_action) out.push(sec("NEXT ACTION", `<div class="card prose">${esc(st.next_action)}</div>`));
+  if (st.for) out.push(sec("WHO IT'S FOR", `<div class="card prose">${esc(st.for)}</div>`));
+  if (st.bet) out.push(sec("WHY IT MATTERS", `<div class="card prose">${esc(st.bet)}</div>`));
   if (st.stage) out.push(sec("STAGE", `<p class="prose">${esc(st.stage)}</p>`));
   if (st.proof) out.push(sec("PROOF", `<div class="card prose">${esc(st.proof)}</div>`));
   if (st.status) out.push(sec("STATUS", `<p class="prose">${esc(st.status)}</p>`));
@@ -2527,6 +2535,7 @@ function reportSheet() {
       + `<div class="row"><div>${p.stage ? esc(p.stage) : "no stage"} &middot; GATE ${verdict(p)}`
       + (p.gap_count ? ` (${p.gap_count})` : "") + (p.drift ? " &middot; STALE" : "")
       + `</div><span>${esc(ago(p.last_activity))}</span></div>`
+      + (p.bet ? `<p class="prose"><b>Why:</b> ${esc(p.bet)}</p>` : "")
       + (p.gate_next ? `<p class="prose">${esc(p.gate_next)}</p>` : "")
       + `<div class="acts"><button type="button" class="ghost" data-act="goto" data-id="${esc(p.id)}">`
       + `Open ${esc(p.name)}</button></div></section>`).join(""));

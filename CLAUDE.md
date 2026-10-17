@@ -21,7 +21,7 @@ Find code by **symbol name** (`grep -n "def gate" coc.py`), not by line number. 
 |---|---|---|---|
 | Claude registry | `~/.claude/projects/<slug>/*.jsonl` | `transcripts`, `resolve_cwd`, `last_prompts` | real project path (`cwd` field, NEVER from the slug), git branch, last prompts, session count, newest activity time |
 | Per-project memory | `~/.claude/projects/<slug>/memory/MEMORY.md` | `_build` | `memory` |
-| Session state | `<project>/.claude/session-state.md` | `read_state` reads frontmatter via `parse_frontmatter`, or falls back to `parse_plain_state` | `status`, `stage`, `last_updated`, `current_task`, `next_action`, `proof`, `blockers` (keys in `FM_SCALARS`) |
+| Session state | `<project>/.claude/session-state.md` | `read_state` reads frontmatter via `parse_frontmatter`, or falls back to `parse_plain_state` | `status`, `stage`, `last_updated`, `current_task`, `next_action`, `proof`, `for`, `bet`, `blockers` (keys in `FM_SCALARS`; `for`/`bet` are the catalog card) |
 | Append-only logs | `<project>/HANDOFF.md`, `PROJECT.md` | `read_logs` reads the TAIL (newest at the bottom) | last heading plus the last 60 lines |
 | Git | `<project>/.git` | `git_info` runs a subprocess with list args | `branch`, `subject`, `committed` (ISO), `dirty` count |
 | Plans | `~/.claude/plans/*.md` | `plans` | title, size, mtime |
@@ -42,7 +42,7 @@ pattern `Name [X]:` is `OWNER_RE`.
 | file reading | `_stat_key`, `read_text`, `tail_text` | per-file cache key `(path, mtime_ns, size)`; UTF-8 with BOM tolerated; tail reads |
 | transcript scanning | `resolve_cwd`, `resolve_project`, `_prompts_in`, `last_prompts`, `is_substantive`, `STOPLIST` | last real prompt; "continue"/"ok" are filler |
 | project folder | `parse_frontmatter`, `parse_plain_state`, `open_blockers`, `waiting_on_me` | session-state parsing (handles 3 real YAML shapes, no YAML library) |
-| drift and the readiness gate | `drift`, `DRIFT_GRACE`, `_epoch`, `OWNER_RE`, `_has_proof`, `gate` | **Ported from Harness.** Drift: work newer than the state file by more than 1h. Gate: hard checks `has_state`, `next_action`, `fresh`; soft checks `blockers_owned`, `proof` (a `none yet` placeholder is not proof), `proof_commit` (every `commit <hash>` the proof cites exists in the repo; set by `unknown_commits` in `_build`) |
+| drift and the readiness gate | `drift`, `DRIFT_GRACE`, `_epoch`, `OWNER_RE`, `_has_proof`, `gate` | **Ported from Harness.** Drift: work newer than the state file by more than 1h. Gate: hard checks `has_state`, `next_action`, `fresh`; soft checks `blockers_owned`, `proof` (a `none yet` placeholder is not proof), `proof_commit` (every `commit <hash>` the proof cites exists in the repo; set by `unknown_commits` in `_build`), `proof_quote` (every `file: 'words'` in proof/for/bet is word for word in that file inside the project; `unverified_quotes`), `card` (both `for` and `bet` filled in) |
 | (state and logs) | `read_state`, `_last_heading`, `read_logs`, `list_files`, `git_info`, `unknown_commits` (`git cat-file -e <hash>^{commit}`; no repo means nothing is unknown) | per-project enrichment |
 | scanning | `_build` (one record per project), `scan` (2s TTL cache; registry builds run on an 8-thread pool because each waits on git), `_dedupe`, `LIGHT`, `light`, `plans` | builds the records the API returns |
 | server | `TOKEN`, `ALLOWED_HOSTS`, `_find_vscode`, `Handler.do_GET`, `Handler.do_POST`, `serve` | HTTP layer |
@@ -66,7 +66,7 @@ Every `/api/*` call needs the header `X-COC-Token`. The token is injected into t
 
 `id name path path_exists unresolved missing source sessions bytes last_activity prompts
 prompt_trivial note session_id` + `status` (short badge, at most 24 chars, or null) `status_note` (long
-status) `stage` (short badge or null) `proof last_updated next_action has_state waiting_count blocker_count branch dirty resume`
+status) `stage` (short badge or null) `proof for bet last_updated next_action has_state waiting_count blocker_count branch dirty resume`
 + **`drift`** (bool) **`gate`** (`"pass"|"fail"|null`) **`gate_next`** (the question to answer first) **`gap_count`**.
 
 ### Fields: full record (`_build`), returned by `/api/project/<id>`
@@ -75,7 +75,7 @@ Everything in `light()`, except that `drift` and `gate` are objects:
 `drift = {by: "transcript"|"commit", state_at, activity_at, behind_hours} | null`,
 `gate = {verdict, gaps: [{id, hard, question}], next} | null` (null when the folder is gone or unresolved).
 Plus: `state {status,last_updated,current_task,next_action,raw,format}`, `state_file`, `blockers[]`,
-`waiting[]`, `proof_unknown[]` (cited hashes git does not have), `logs[{name,size,heading,tail}]`, `files[{name,size,mtime}]`, `memory`,
+`waiting[]`, `proof_unknown[]` (cited hashes git does not have), `proof_unquoted[]` (files whose quoted words are not in them), `logs[{name,size,heading,tail}]`, `files[{name,size,mtime}]`, `memory`,
 `git {branch,subject,committed,dirty}`.
 
 ## Frontend: `index.html` sections (search the banner text)

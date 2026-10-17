@@ -267,7 +267,8 @@ def last_prompts(slug_dir):
 # ------------------------------------------------------------ project folder
 
 # stage and proof are written by skills/coc-checkpoint; the rest predate it.
-FM_SCALARS = ("status", "stage", "last_updated", "current_task", "next_action", "proof")
+FM_SCALARS = ("status", "stage", "last_updated", "current_task", "next_action", "proof",
+              "for", "bet")
 
 
 BLOCK_SCALARS = (">", "|", ">-", "|-", ">+", "|+")
@@ -495,7 +496,8 @@ OWNER_RE = re.compile(r"^\s*[^:\[\]\n]{1,40}\[[^\]\n]{1,8}\]\s*:")
 
 
 def _has_proof(proof):
-    """The skill's placeholder for 'nothing verified yet' is not proof."""
+    """Filled in for real. The skill's 'none yet' placeholder does not count,
+    for proof or for a catalog-card line."""
     p = (proof or "").strip()
     return bool(p) and not p.lower().startswith("none yet")
 
@@ -529,6 +531,14 @@ def gate(rec):
             ("proof_commit", False,
              "The proof cites an unknown commit: does it exist in this repo?",
              not rec.get("proof_unknown")),
+            ("proof_quote", False,
+             "A quote doesn't match its source: is it word for word?",
+             not rec.get("proof_unquoted")),
+            # The catalog card. A library's real job: a building found months
+            # later should say who it was for and why it mattered.
+            ("card", False,
+             "Would future-you know who this is for and why it mattered?",
+             _has_proof(st.get("for")) and _has_proof(st.get("bet"))),
         ]
     gaps = [{"id": cid, "hard": hard, "question": q}
             for cid, hard, q, ok in checks if not ok]
@@ -640,6 +650,28 @@ def git_info(path):
     }
 
 
+# "docs/interviews.md: 'exact words'" - single quotes, because the frontmatter
+# value around it is already double-quoted.
+QUOTE_RE = re.compile(r"([\w./\\-]+\.[A-Za-z0-9]{1,8}):\s*'([^']{8,})'")
+
+
+def unverified_quotes(path, *texts):
+    """Files whose quoted words are not actually in them (Harness's verbatim
+    citation rule). Whitespace is normalised, so a quote that a Markdown file
+    wraps across lines still matches. A path outside the project folder never
+    verifies: the project is the evidence, nothing else."""
+    root = os.path.realpath(path)
+    bad = []
+    for text in texts:
+        for rel, quote in QUOTE_RE.findall(text or ""):
+            fp = os.path.realpath(os.path.join(root, rel.replace("\\", os.sep)))
+            inside = fp.startswith(root + os.sep)
+            body = read_text(fp) if inside and os.path.isfile(fp) else None
+            if body is None or " ".join(quote.split()) not in " ".join(body.split()):
+                bad.append(rel)
+    return bad
+
+
 PROOF_COMMIT_RE = re.compile(r"\bcommit\s+([0-9a-f]{7,40})\b", re.I)
 
 
@@ -713,6 +745,7 @@ def _build(path, slug, source, slug_dir=None, branch_hint=None):
         "note": None,
         "drift": None,
         "proof_unknown": [],
+        "proof_unquoted": [],
         "gate": None,
     }
     newest_tx = None
@@ -763,7 +796,9 @@ def _build(path, slug, source, slug_dir=None, branch_hint=None):
             (newest_tx, "transcript"),
             (_epoch((rec["git"] or {}).get("committed")), "commit"),
         ])
-        rec["proof_unknown"] = unknown_commits(path, (rec["state"] or {}).get("proof"))
+        st = rec["state"] or {}
+        rec["proof_unknown"] = unknown_commits(path, st.get("proof"))
+        rec["proof_unquoted"] = unverified_quotes(path, st.get("proof"), st.get("for"), st.get("bet"))
     rec["gate"] = gate(rec)
 
     if not rec["last_activity"]:
@@ -888,6 +923,8 @@ def light(rec):
     stage = (st.get("stage") or "").strip()
     out["stage"] = stage if stage and len(stage) <= 24 and "\n" not in stage else None
     out["proof"] = st.get("proof")
+    out["for"] = st.get("for")
+    out["bet"] = st.get("bet")
     out["has_state"] = bool(rec.get("state"))
     out["waiting_count"] = len(rec.get("waiting") or [])
     out["blocker_count"] = len(rec.get("blockers") or [])
@@ -1622,6 +1659,8 @@ def selftest_gate():
         # Proof present by default, so each case isolates the check it names;
         # the proof check has its own cases in selftest_checkpoint().
         state.setdefault("proof", "53/53 passed")
+        state.setdefault("for", "the finance team closing the month")
+        state.setdefault("bet", "totals that match the ledger save a day of rework")
         return {"state": state, "blockers": blockers,
                 "drift": state.pop("_drift", None) if state else None}
 
@@ -1666,7 +1705,8 @@ def selftest_gate():
     sp = os.path.join(proj, STATE_FILE)
     with open(sp, "w", encoding="utf-8") as fh:
         fh.write('---\nnext_action: "wire the export button to the ledger"\n'
-                 'proof: "export test 4/4 passed"\n---\n')
+                 'proof: "export test 4/4 passed"\n'
+                 'for: "the accountant"\nbet: "one-click export beats copy-paste"\n---\n')
     slug = os.path.join(root, "reg", "D--Drifter")
     os.makedirs(slug)
     tj = os.path.join(slug, "t.jsonl")
@@ -1739,7 +1779,8 @@ def selftest_checkpoint():
 
     # Proof is Harness's "a pass must cite evidence", kept SOFT so state files
     # written before the skill existed still pass. A placeholder is not proof.
-    base = {"next_action": "rerun the arabic totals against the ledger"}
+    base = {"next_action": "rerun the arabic totals against the ledger",
+            "for": "the finance team", "bet": "matching totals save a day of rework"}
     for proof in (None, "", "none yet - a green probe run would prove it"):
         g = gate({"state": dict(base, proof=proof), "blockers": [], "drift": None})
         assert g["verdict"] == "pass", (proof, g)
@@ -1781,7 +1822,7 @@ def selftest_checkpoint():
         def scan_with(proof):
             with open(os.path.join(repo, STATE_FILE), "w", encoding="utf-8") as fh:
                 fh.write(f'---\nnext_action: "{base["next_action"]}"\n'
-                         f'proof: "{proof}"\n---\n')
+                         f'proof: "{proof}"\nfor: "{base["for"]}"\nbet: "{base["bet"]}"\n---\n')
             global EXTRA_ROOTS
             EXTRA_ROOTS = [repo]
             _cache.clear()
@@ -1791,6 +1832,51 @@ def selftest_checkpoint():
         fake = scan_with("6/6 passed; commit 0badc0de")
         assert [x["id"] for x in fake["gaps"]] == ["proof_commit"], fake
         assert scan_with(f"6/6 passed; commit {real}")["gaps"] == []
+
+    # The catalog card: who it is for and why it mattered, so a building found
+    # months later explains itself. Soft: old state files still pass.
+    for card in ({}, {"for": "the finance team"}, {"bet": "saves a day"},
+                 {"for": "the finance team", "bet": "none yet - ask them"}):
+        st = dict(base, proof="53/53 passed"); st.pop("for"); st.pop("bet"); st.update(card)
+        g = gate({"state": st, "blockers": [], "drift": None})
+        assert g["verdict"] == "pass" and [(x["id"], x["hard"]) for x in g["gaps"]] == [("card", False)], (card, g)
+    lt = light(dict(got, state=dict(got["state"], **{"for": "me", "bet": "why"})))
+    assert lt["for"] == "me" and lt["bet"] == "why", lt
+
+    # Quoted evidence, Harness's verbatim-citation rule: "file: 'words'" must
+    # appear in that file inside the project. Whitespace is normalised so a
+    # wrapped line still matches; anything else is a misquote.
+    qp = os.path.join(root, "Quoted")
+    os.makedirs(os.path.join(qp, "docs"))
+    with open(os.path.join(qp, "docs", "interviews.md"), "w", encoding="utf-8") as fh:
+        fh.write("Pat: I lose track of\nmy prototypes every single month.\n")
+    with open(os.path.join(root, "outside.md"), "w", encoding="utf-8") as fh:
+        fh.write("a quote that lives outside the project folder\n")
+    assert unverified_quotes(qp, "docs/interviews.md: 'lose track of my prototypes every single month'") == []
+    assert unverified_quotes(qp, r"docs\interviews.md: 'I lose track of my prototypes'") == []
+    assert unverified_quotes(qp, "docs/interviews.md: 'I never lose my prototypes'") == ["docs/interviews.md"]
+    assert unverified_quotes(qp, "docs/missing.md: 'any words at all here'") == ["docs/missing.md"]
+    assert unverified_quotes(qp, "../outside.md: 'a quote that lives outside'") == ["../outside.md"]
+    assert unverified_quotes(qp, "no quotes here", None, "") == []
+    # Checked in every card field, not only proof.
+    assert unverified_quotes(qp, None, None, "docs/interviews.md: 'every single week'") == ["docs/interviews.md"]
+    q = gate({"state": dict(base, proof="x"), "blockers": [], "drift": None,
+              "proof_unquoted": ["docs/interviews.md"]})
+    assert q["verdict"] == "pass" and [(x["id"], x["hard"]) for x in q["gaps"]] == [("proof_quote", False)], q
+
+    # End to end: the scan reads the quoted file.
+    os.makedirs(os.path.join(qp, ".claude"))
+    def scan_quoted(bet):
+        with open(os.path.join(qp, STATE_FILE), "w", encoding="utf-8") as fh:
+            fh.write(f'---\nnext_action: "{base["next_action"]}"\nproof: "53/53 passed"\n'
+                     f'for: "Pat"\nbet: "{bet}"\n---\n')
+        global EXTRA_ROOTS
+        EXTRA_ROOTS = [qp]
+        _cache.clear()
+        _scan_cache.update(at=0.0, data=None)
+        return scan(force=True)[0]["gate"]
+    assert scan_quoted("docs/interviews.md: 'my prototypes every single month'")["gaps"] == []
+    assert [x["id"] for x in scan_quoted("docs/interviews.md: 'my prototypes every day'")["gaps"]] == ["proof_quote"]
 
     shutil.rmtree(root, ignore_errors=True)
 
