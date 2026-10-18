@@ -37,7 +37,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # COC_REGISTRY points the scan at another registry, e.g. demo/make_demo.py's
 # fake one, so a demo never mixes with (or writes near) the real ~/.claude.
 REGISTRY = os.environ.get("COC_REGISTRY") or os.path.join(os.path.expanduser("~"), ".claude", "projects")
-PLANS_DIR = os.path.join(os.path.expanduser("~"), ".claude", "plans")
+# Overridable like REGISTRY, so a demo never shows the real ~/.claude/plans.
+PLANS_DIR = os.environ.get("COC_PLANS_DIR") or os.path.join(os.path.expanduser("~"), ".claude", "plans")
 
 # Folders the registry cannot know about, because a registry entry only exists
 # once Claude has actually been run there. Empty by default: machine-specific

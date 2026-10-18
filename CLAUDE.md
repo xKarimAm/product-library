@@ -107,10 +107,13 @@ CSP note: inline `style="..."` attributes are blocked. Set dynamic styles via `e
 - `demo/make_demo.py` builds the live demo: copies `demo/products/*` (six tiny real apps) into
   `../coc-demo`, adds git history, a checkpoint state file and transcripts in a demo-only registry,
   then self-checks each product's expected gate/drift/stage through `coc.scan()`. `--serve` runs COC
-  in-process with `COC_REGISTRY` (registry override), `COC_EXTRA_ROOTS=""` (no extra folders) and
+  in-process with `COC_REGISTRY` (registry override), `COC_PLANS_DIR` (demo plans, never the real ones),
+  `COC_EXTRA_ROOTS=""` (no extra folders) and
   `COC_DRIFT_GRACE=10`. Live actions on the built demo: `--commit <product>` (goes STALE in ~10s),
   `--checkpoint <product>` (passes again); `--rehearse` asserts that loop and resets. Change a
-  product's scenario in `PROJECTS` and its `expect` together. Presenter guide: `DEMO.md`.
+  product's scenario in `PROJECTS` and its `expect` together. `DEPTH` adds the story layer (history commits,
+  HANDOFF.md, MEMORY.md, CLAUDE.md, extra sessions, a branch) and must never change a gate outcome: history only
+  lands between a product's first and last scenario commit, extra sessions predate its checkpoint. Presenter guide: `DEMO.md`.
 - `docs/presentation.html` is the short stage talk (what, why, lessons, tech); it embeds `poc_city.html`.
 - `docs/lessons-learned.html` is the interactive deck about why it exists and the lessons learned.
 - `docs/superpowers/specs/` holds design specs (villager traffic, SimCity city POC) with acceptance criteria.

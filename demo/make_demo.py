@@ -205,6 +205,110 @@ _inv["commits"][1] = (_inv["commits"][1][0], _inv["commits"][1][1], ["main.py", 
 _inv["state"]["bet"] = "NOTES.md: 'we re-type every invoice total by hand, about two hours a day'"
 _inv["expect"]["gaps"] = ["proof_quote"]
 
+# Depth: the story around each scenario, so the full view has something real in
+# every section. Kept apart from PROJECTS on purpose: nothing here may change a
+# gate, drift or stage outcome. History commits only land BETWEEN a product's
+# first and last scenario commit, and extra sessions are all older than its
+# checkpoint, so `expect` above stays true.
+#   history: (age_h, message) - each commit appends that line to CHANGELOG.md
+#   handoff: (age_h, title, [bullets]) - the append-only HANDOFF.md session log
+#   memory:  Claude's per-project MEMORY.md (lives in the demo registry)
+#   claude:  the project's CLAUDE.md
+#   sessions: extra (age_h, [prompts]) on top of the scenario's own
+#   branch:  work happens on this branch instead of main
+DEPTH = {
+    "calculator": {
+        "history": [(24, "Tokenizer: numbers, operators and whitespace"),
+                    (21, "Fix: 2-3-4 was evaluated right to left"),
+                    (17, "Decimals and negative results"),
+                    (13, "Errors point at the bad character with a caret"),
+                    (8, "Refactor: tokens and grammar in separate functions"),
+                    (5, "40% faster on a 10,000-term expression")],
+        "handoff": [(25, "Tokenizer works", ["numbers, + - * / and spaces tokenize", "next: precedence"]),
+                    (12, "Error messages", ["`2 + * 3` now shows a caret under the `*`", "next: refactor before adding parentheses"]),
+                    (2.2, "Parentheses and tests", ["unary minus and nested parentheses work",
+                                                    "6 unit tests incl. division by zero, all green",
+                                                    "next: tag v1.0 and document parentheses"])],
+        "memory": "# Calculator memory\n\n- Never use eval(); the whole point is a parser we trust.\n"
+                  "- Grammar: expr -> term (('+'|'-') term)*, term -> factor (('*'|'/') factor)*.\n"
+                  "- Tests run with `py -m unittest`; keep them under a second.\n",
+        "claude": "# Calculator\n\nRecursive-descent calculator, standard library only. No eval().\n"
+                  "Run tests with `py -m unittest` before every commit.\n",
+        "sessions": [(16, ["why does 2-3-4 give 3", "fix associativity for minus"]),
+                     (11, ["add a caret under the bad character in error messages"]),
+                     (7, ["split the parser into tokenize() and parse()"])],
+    },
+    "chatbot-frontend": {
+        "history": [(27, "Message log scrolls to the newest reply"),
+                    (22, "Canned replies rotate instead of repeating"),
+                    (14, "Dark theme for the projector"),
+                    (9, "Tester feedback round with three friends")],
+        "handoff": [(28, "First chat UI", ["message log and input box in one HTML file", "replies are canned for now"]),
+                    (8, "Tester feedback", ["3 friends tried it, notes in FEEDBACK.md", "all want it to run without installing anything"]),
+                    (0.8, "Projector polish", ["bubbles readable at the back of a room",
+                                               "blocked: which model provider to wire in (my call)"])],
+        "memory": "# Chatbot front end memory\n\n- One HTML file, no build step, no framework.\n"
+                  "- reply() is the only function that will call a model; keep it isolated.\n"
+                  "- Provider choice is open: OpenRouter (many models) or Anthropic API (one key).\n",
+        "claude": "# Chatbot front end\n\nSingle-file chat UI. Open index.html in a browser; nothing to install.\n",
+        "sessions": [(20, ["make canned replies rotate"]), (12, ["add a dark theme for projectors"])],
+    },
+    "habit-tracker": {
+        "history": [(46, "Check-in command and JSON store"),
+                    (40, "Streak counter"),
+                    (31, "Fix: streak reset at midnight UTC instead of local time"),
+                    (20, "Weekly summary view")],
+        "handoff": [(48, "CLI skeleton", ["`habits.py add` and `habits.py check` work"]),
+                    (30, "Timezone bug", ["streaks broke at UTC midnight; now uses local dates"]),
+                    (6.2, "Streak edge cases", ["unchecked today should keep yesterday's streak",
+                                                "next: a week of real check-ins compared by hand"])],
+        "memory": "# Habit tracker memory\n\n- Dates are LOCAL, never UTC: the midnight bug cost a day.\n"
+                  "- Store is habits.json next to the script, git-ignored.\n",
+        "claude": "# Habit tracker\n\nCLI habit tracker with streaks. `py habits.py --help`.\n",
+        "sessions": [(36, ["why did my streak reset last night"]), (22, ["add a weekly summary"])],
+        "branch": "streak-edge-cases",
+    },
+    "pomodoro-timer": {
+        "history": [(7, "Countdown renders in place on one line"), (5, "Schedule builder with breaks")],
+        "handoff": [(8.5, "Timer works", ["25/5 cycle counts down in the terminal"]),
+                    (3.6, "Long breaks", ["every 4th break is 15 minutes", "3 tests green", "next: --work flag"])],
+        "claude": "# Pomodoro timer\n\nTerminal timer. `py pomodoro.py 4` runs four rounds.\n",
+    },
+    "kanban-board": {
+        "handoff": [(200, "Board skeleton", ["three columns, cards are plain text"]),
+                    (80, "Drag and drop", ["native HTML drag events, no library"]),
+                    (2.1, "Persistence", ["cards persist; column ORDER does not yet", "next: save column order"])],
+        "memory": "# Kanban memory\n\n- No libraries: native drag-and-drop only.\n- State lives in localStorage under one key.\n",
+    },
+    "meeting-notes-ai": {
+        "handoff": [(150, "Transcript parser", ["speaker turns parsed from .vtt files"]),
+                    (26.5, "Summary length", ["short and long summaries both work", "waiting on me: pick the default length"])],
+    },
+}
+
+# Demo plans for the Plans page (COC_PLANS_DIR points here), never the real
+# ~/.claude/plans. (age_h, file name, markdown body)
+PLANS = [
+    (3, "calculator-v1-1.md", "# Calculator v1.1: scientific mode\n\nAdd sqrt, ^ and parentheses-aware error hints.\n"),
+    (20, "chatbot-provider.md", "# Chatbot: choose and wire a model provider\n\nCompare OpenRouter and the Anthropic API on cost and setup.\n"),
+    (70, "habit-weekly-review.md", "# Habit tracker: weekly review screen\n\nOne screen per week: streaks, misses, notes.\n"),
+    (200, "portfolio-cleanup.md", "# Portfolio cleanup: what to archive\n\nWalk the dormant district; archive or revive each.\n"),
+]
+CHANGE_POOL = ["Tidy README usage", "Handle empty input", "Clearer error messages", "Small refactor",
+               "Add a --help flag", "Fix an off-by-one", "Speed up startup", "Rename for clarity"]
+
+
+def depth_for(p):
+    """DEPTH for a hero, or a short generated history for a crowd product, so
+    every building has more than two commits behind it."""
+    d = dict(DEPTH.get(p["name"], {}))
+    if "history" not in d and len(p["commits"]) > 1:
+        first, last = p["commits"][0][0], p["commits"][-1][0]
+        n = 2 + len(p["name"]) % 4
+        d["history"] = [(last + (first - last) * (k + 1) / (n + 1),
+                         CHANGE_POOL[(len(p["name"]) + k) % len(CHANGE_POOL)]) for k in range(n)]
+    return d
+
 
 def iso(age_h):
     return datetime.fromtimestamp(NOW - age_h * H).astimezone().isoformat(timespec="seconds")
@@ -223,7 +327,15 @@ def reset_out():
     if os.path.exists(OUT):
         if not os.path.exists(os.path.join(OUT, MARK)):
             sys.exit("refusing to delete %s: it was not made by make_demo.py" % OUT)
-        shutil.rmtree(OUT, **({"onexc": _force_rm} if sys.version_info >= (3, 12) else {"onerror": _force_rm}))
+        try:
+            shutil.rmtree(OUT, **({"onexc": _force_rm} if sys.version_info >= (3, 12) else {"onerror": _force_rm}))
+        except OSError as e:
+            # A running demo server holds files open, so the delete stops part
+            # way - possibly after the marker went. Put it back, or every later
+            # run would refuse to touch a folder that is still ours.
+            open(os.path.join(OUT, MARK), "w").close()
+            sys.exit("could not clear %s (%s).\nIs a demo server still running, or a terminal or "
+                     "Explorer window open inside it? Close it, then run this again." % (OUT, e.strerror or e))
     os.makedirs(os.path.join(OUT, "registry"))
     open(os.path.join(OUT, MARK), "w").close()
 
@@ -263,14 +375,14 @@ def write_state(path, age_h, st):
     stamp(fp, age_h)
 
 
-def write_sessions(path, sessions):
+def write_sessions(path, sessions, branch="main"):
     slug = re.sub(r"[^A-Za-z0-9]", "-", path)
     reg = os.path.join(OUT, "registry", slug)
     os.makedirs(reg)
     for age_h, prompts in sessions:
         sid = str(uuid.uuid4())
         rec = [{"type": "queue-operation", "sessionId": sid},
-               {"type": "attachment", "cwd": path, "gitBranch": "main", "sessionId": sid}]
+               {"type": "attachment", "cwd": path, "gitBranch": branch, "sessionId": sid}]
         for p in prompts:
             rec += [{"type": "user", "message": {"role": "user", "content": p}, "sessionId": sid},
                     {"type": "last-prompt", "lastPrompt": p, "sessionId": sid}]
@@ -278,6 +390,7 @@ def write_sessions(path, sessions):
         with open(fp, "w", encoding="utf-8") as fh:
             fh.write("".join(json.dumps(r) + "\n" for r in rec))
         stamp(fp, age_h)
+    return reg
 
 
 def build(p):
@@ -294,8 +407,32 @@ def build(p):
     st = p.get("state")
     if st and st["proof"] == TESTS:
         st = dict(st, proof=unittest_proof(path))
+    d = depth_for(p)
+    commits = [(a, m, list(f)) for a, m, f in p["commits"]]
+    if d.get("claude"):
+        with open(os.path.join(path, "CLAUDE.md"), "w", encoding="utf-8") as fh:
+            fh.write(d["claude"])
+        commits[0][2].append("CLAUDE.md")
+    if d.get("handoff"):
+        log = ["# Handoff log", "", "Each session appends one entry at the bottom."]
+        for age_h, title, bullets in d["handoff"]:
+            log += ["", "## %s: %s" % (iso(age_h)[:10], title), ""] + ["- " + b for b in bullets]
+        with open(os.path.join(path, "HANDOFF.md"), "w", encoding="utf-8") as fh:
+            fh.write("\n".join(log) + "\n")
+        commits[-1][2].append("HANDOFF.md")
+    first, last = commits[0][0], commits[-1][0]
+    story = sorted(commits + [(a, m, None) for a, m in d.get("history", []) if last < a < first],
+                   key=lambda c: -c[0])
     git(path, "init", "-q", "-b", "main")
-    for age_h, msg, files in p["commits"]:
+    changes = ["# Changelog", ""]
+    for i, (age_h, msg, files) in enumerate(story):
+        if files is None:                    # a history commit: one changelog line
+            changes.append("- " + msg)
+            with open(os.path.join(path, "CHANGELOG.md"), "w", encoding="utf-8") as fh:
+                fh.write("\n".join(changes) + "\n")
+            files = ["CHANGELOG.md"]
+        if d.get("branch") and i == len(story) - 1:
+            git(path, "checkout", "-q", "-b", d["branch"])
         git(path, "add", *files)
         git(path, "commit", "-q", "-m", msg, age_h=age_h)
     if st:
@@ -307,7 +444,11 @@ def build(p):
         rel, text = p["dirty"]
         with open(os.path.join(path, rel), "a", encoding="utf-8") as fh:
             fh.write(text)
-    write_sessions(path, p["sessions"])
+    reg = write_sessions(path, p["sessions"] + d.get("sessions", []), d.get("branch", "main"))
+    if d.get("memory"):                      # Claude's own per-project notes, as the registry keeps them
+        os.makedirs(os.path.join(reg, "memory"))
+        with open(os.path.join(reg, "memory", "MEMORY.md"), "w", encoding="utf-8") as fh:
+            fh.write(d["memory"])
     for f in os.listdir(path):               # README etc. must not look newer than the work
         if os.path.isfile(os.path.join(path, f)):
             stamp(os.path.join(path, f), p["commits"][-1][0])
@@ -319,13 +460,19 @@ def build_all():
         build(p)
     for slug in LOTS:                        # a registry entry with nothing behind it
         os.makedirs(os.path.join(OUT, "registry", slug))
+    os.makedirs(os.path.join(OUT, "plans"))
+    for age_h, name, body in PLANS:
+        fp = os.path.join(OUT, "plans", name)
+        with open(fp, "w", encoding="utf-8") as fh:
+            fh.write(body)
+        stamp(fp, age_h)
 
 
 def env():
     # Demo projects only, and a grace short enough that a live commit flips a
     # project to STALE while the audience watches.
     return dict(os.environ, COC_REGISTRY=os.path.join(OUT, "registry"), COC_EXTRA_ROOTS="",
-                COC_DRIFT_GRACE=str(GRACE))
+                COC_PLANS_DIR=os.path.join(OUT, "plans"), COC_DRIFT_GRACE=str(GRACE))
 
 
 def scenario(name):
@@ -403,6 +550,18 @@ def check():
               ",".join(seen["gaps"]) or "-", seen["drift"] or "-", seen["waiting"]))
         bad += ["%s: %s is %r, want %r" % (p["name"], k, seen[k], v)
                 for k, v in p["expect"].items() if seen[k] != v]
+    if bad:
+        sys.exit("DEMO CHECK FAILED\n  " + "\n  ".join(bad))
+    for name, d in DEPTH.items():            # the story layer landed where the UI reads it
+        r = got[name]
+        if d.get("handoff") and not any(l["name"] == "HANDOFF.md" and l["heading"] for l in r["logs"]):
+            bad.append(name + ": HANDOFF.md log missing")
+        if d.get("memory") and not r["memory"]:
+            bad.append(name + ": MEMORY.md missing")
+        if d.get("branch") and (r["git"] or {}).get("branch") != d["branch"]:
+            bad.append("%s: branch is %r, want %r" % (name, (r["git"] or {}).get("branch"), d["branch"]))
+    if sorted(x["name"] for x in coc.plans()) != sorted(n for _a, n, _b in PLANS):
+        bad.append("plans: not exactly the demo plans (the real ~/.claude/plans could show)")
     if bad:
         sys.exit("DEMO CHECK FAILED\n  " + "\n  ".join(bad))
     lots = [r for r in got.values() if r["unresolved"]]
