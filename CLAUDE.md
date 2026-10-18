@@ -18,7 +18,7 @@ no installs. (macOS/Linux: `python3` instead of `py`.)
 4. The deck: the `deck` entry serves the repo on port 7790; open `http://127.0.0.1:7790/docs/presentation.html`.
 
 Presenter material: `TALK.md` (what to say, timings, likely questions), `docs/presentation.html`
-(6 slides), `demo/tour.json` (the guide's 13 steps), `DEMO.md` (the demo city in detail, troubleshooting).
+(6 slides), `demo/tour.json` (the guide's 14 steps), `DEMO.md` (the demo city in detail, troubleshooting).
 A server or terminal inside `../coc-demo` blocks the rebuild: stop it before `--rehearse`.
 
 Local, read-only mission control over every folder Claude Code has run in. Two files do everything:
@@ -116,9 +116,9 @@ JS banners, with what lives in each:
 | bubble | `openBubble`, `closeBubble`, `placeBubble` | click popover: stage + STALE badges in the header, NEXT (labelled "written before the latest work" when `p.drift`), last prompt, PROOF, GATE block (`gate`, `gap_count`, `gate_next`), sources, waiting-on-you |
 | actions | `launch` (POST /api/open), `copy` | |
 | sheets | `projectSheet` (full view `/p/<id>`: stale detail, full gate gap list, stage, proof), `blockedSheet`, `plansSheet`, `reportSheet` (`/report`: every project by gate verdict plus its truth boundary, checked vs only written down, built from `PROJECTS`, no extra API) | |
-| city: day/night, avenues and traffic, RCI meter, roster panel | `applySky` (palette from the real clock; `?hour=` forces it), `drawRoads`, `spawnVehicles`, `buildMeter`, `buildRoster` (project rail plus the swatch legend) | the SimCity layer. CSS banners `city: ...` hold its styles, including `city: shine` (window flicker, stars, searchlights, blimp; all off under reduced motion) |
+| city: day/night, avenues and traffic, RCI meter, roster panel | `applySky` (palette from the real clock; `?hour=` forces it), `drawRoads`, `spawnVehicles`, `buildMeter`, `buildRoster` (project rail; the legend is the static `<details id="legend">` floating over the city) | the SimCity layer. CSS banners `city: ...` hold its styles, including `city: shine` (window flicker, stars, searchlights, blimp; all off under reduced motion) |
 | routing / filter / data / bindings | `go`, `render`, `applyFilter`, `load` | client routes, search box (`#search`), data fetch |
-| demo guide | `tourStart`, `tourGo` | the `#tour` panel: one step per `demo/tour.json` entry (`title say do focus view`), PgUp/PgDn, T hides; the step survives F5 via sessionStorage |
+| demo guide | `tourStart`, `tourGo` | the `#tour` panel: one step per `demo/tour.json` entry (`title say repo do focus view`; `repo` is the plain-words "In the repo" block, backticks become code), PgUp/PgDn, T hides; the step survives F5 via sessionStorage |
 
 CSP note: inline `style="..."` attributes are blocked. Set dynamic styles via `el.style.setProperty`.
 ## Other files
@@ -132,7 +132,8 @@ CSP note: inline `style="..."` attributes are blocked. Set dynamic styles via `e
   in-process with `COC_REGISTRY` (registry override), `COC_PLANS_DIR` (demo plans, never the real ones),
   `COC_EXTRA_ROOTS=""` (no extra folders) and
   `COC_DRIFT_GRACE=10`. Live actions on the built demo: `--commit <product>` (goes STALE in ~10s),
-  `--checkpoint <product>` (passes again); `--rehearse` asserts that loop and resets. Change a
+  `--checkpoint <product>` (passes again); `--rehearse` asserts that loop and resets; `--code` opens
+  `../coc-demo/demo.code-workspace` (every product) in VS Code. Products build in parallel (about 6s). Change a
   product's scenario in `PROJECTS` and its `expect` together. `DEPTH` adds the story layer (history commits,
   HANDOFF.md, MEMORY.md, CLAUDE.md, extra sessions, a branch) and must never change a gate outcome: history only
   lands between a product's first and last scenario commit, extra sessions predate its checkpoint. Presenter guide: `DEMO.md`.

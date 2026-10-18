@@ -36,8 +36,8 @@ To force it, open `http://127.0.0.1:7777/?hour=22` for night or `?hour=12` for d
 
 ## The on-screen guide
 
-`--serve` shows a guide panel at the top left: 13 steps, each with what to say and what to do
-(including the two live commands). **PgDn** next, **PgUp** back (a presentation clicker sends these),
+`--serve` shows a guide panel at the top left: 14 steps, each with what to say, what to do
+(including the two live commands) and **In the repo**: the file or commit behind what is on screen, in plain words. **PgDn** next, **PgUp** back (a presentation clicker sends these),
 **T** hides it for questions. It moves the app for you: opens the right building, the full view, the
 report. It survives F5, and a new tab starts again at step 1. Edit the steps in `demo/tour.json`.
 Real use never shows it: only the demo sets `COC_TOUR`.
@@ -46,8 +46,11 @@ Real use never shows it: only the demo sets `COC_TOUR`.
 
 How far along a project is reads as its building: **dirt lot** (registry entry, nothing on disk),
 **tent** (just started: defining it, or no checkpoint yet), **low-rise** (finding its footing),
-**tower** (lots of work). A crane means it is active with a checkpoint. The colour legend is at
-the bottom of the right-hand rail.
+**tower** (lots of work). A crane means it is active with a checkpoint. The legend floats at the
+bottom right of the city; click its title to hide or show it (the choice is remembered).
+
+`py demo/make_demo.py --code` builds the demo and opens all 18 projects in one VS Code window
+(`../coc-demo/demo.code-workspace`). Every building's **Open in VS Code** button opens just that one.
 
 ## The six heroes
 

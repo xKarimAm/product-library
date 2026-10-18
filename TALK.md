@@ -1,7 +1,7 @@
 # Talk: Product Library (about 10 minutes)
 
 Deck: `docs/presentation.html` (6 slides). Then the live app, where the guide on screen
-carries the demo: 13 steps, each with what to say and what to do.
+carries the demo: 14 steps, each with what to say, what to do, and what is really in the repo.
 
 ## On the presenting laptop, before you start
 1. Windows Settings > Accessibility > Visual effects > **Animation effects ON**.
@@ -9,6 +9,7 @@ carries the demo: 13 steps, each with what to say and what to do.
    `py demo/make_demo.py --rehearse` must print **rehearsal OK**.
 3. `py demo/make_demo.py --serve`, then open `http://127.0.0.1:7777` in a **new tab** (starts at step 1).
 4. Open a second terminal in the same repo folder for the two live commands.
+   Optional: `py demo/make_demo.py --code` opens every demo project in VS Code (it rebuilds the demo: run it before `--serve`).
 5. Open the deck in another tab. F11 for full screen.
 
 Keys: **PgDn / PgUp** move the deck AND the guide (a clicker sends these). **T** hides the guide.

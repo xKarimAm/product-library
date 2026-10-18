@@ -481,13 +481,18 @@ header{
 /* -------------------------------------------------------------- demo guide */
 /* The live demo's on-screen steps. Big, plain system type: read from the back row. */
 /* 380px wide: at 1280px it still clears a full view sliding in from the right. */
-#tour{position:fixed;left:16px;top:76px;z-index:60;width:min(380px,calc(100vw - 32px));
+#tour{position:fixed;left:16px;top:76px;z-index:60;width:min(380px,calc(100vw - 32px));max-height:calc(100vh - 92px);overflow:auto;
   background:rgba(20,11,42,.95);color:#F4F1EA;border:1px solid rgba(244,192,78,.45);border-radius:14px;
   padding:16px 18px 14px;box-shadow:0 18px 50px rgba(6,2,16,.5);font-family:var(--display)}
 #tour[hidden]{display:none}
 #tour .n{font:600 13px var(--display);letter-spacing:.08em;text-transform:uppercase;color:#F4C04E}
 #tour h2{margin:4px 0 8px;font:600 24px/1.2 var(--display);letter-spacing:-.01em}
-#tour .say{margin:0 0 10px;font:400 19px/1.5 var(--display)}
+#tour .say{margin:0 0 10px;font:400 18px/1.45 var(--display)}
+/* What is really on disk behind this step: the point of the demo, so it gets its own block. */
+#tour .repo{margin:0 0 10px;padding:9px 11px;border-radius:9px;background:rgba(139,92,246,.16);border-left:3px solid var(--m-violet);
+  font:400 14.5px/1.45 var(--display);color:#E4DAFB}
+#tour .repo b{display:block;margin-bottom:2px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C4B0FA}
+#tour .repo code{font:500 13px var(--mono);color:#fff;background:rgba(0,0,0,.25);padding:0 4px;border-radius:4px}
 #tour .do{margin:0;padding:9px 11px;border-radius:9px;background:rgba(244,192,78,.12);font:400 15.5px/1.45 var(--display);color:#F7E3B0}
 #tour .do b{margin-right:7px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#F4C04E}
 #tour .ctl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
@@ -547,16 +552,24 @@ header{
   text-align:center;color:rgba(239,233,247,.7);max-width:360px;
 }
 #empty b{display:block;font:600 15px var(--display);color:#fff;margin-bottom:5px}
-.legend{
-  position:absolute;left:22px;bottom:16px;z-index:20;display:flex;gap:14px;flex-wrap:wrap;
-  font:400 10.5px var(--mono);color:rgba(239,233,247,.55);pointer-events:none;
-}
-.legend span::before{content:'';display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:-1px}
-.legend .k-near::before{background:#F7F5FB}
-.legend .k-far::before{background:rgba(247,245,251,.35)}
-.legend .k-mod::before{background:#8B5CF6}
-.legend .k-red::before{background:#FF4D5E}
-.legend .k-bot::before{background:#D4785A}
+/* Floating legend: a table over the bottom-right of the city. <details> folds
+   it down to its title; the meter owns bottom-left, the guide top-left. */
+#legend{position:absolute;right:14px;bottom:14px;z-index:25;max-height:calc(100% - 28px);overflow:auto;
+  background:rgba(22,16,34,.94);border:1px solid rgba(255,255,255,.12);border-radius:12px;
+  box-shadow:0 12px 34px rgba(6,2,16,.45);font:400 12px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;color:rgba(239,233,247,.8)}
+#legend summary{cursor:pointer;padding:8px 12px;font-weight:650;color:#EDE6DA;list-style:none;display:flex;gap:10px;align-items:center;user-select:none}
+#legend summary::-webkit-details-marker{display:none}
+#legend summary::after{content:'show';margin-left:auto;font-weight:400;font-size:11px;opacity:.6}
+#legend[open] summary::after{content:'hide'}
+#legend summary:focus-visible{outline:2px solid var(--clay-lite);outline-offset:-2px;border-radius:12px}
+#legend table{border-collapse:collapse;margin:0 12px 10px}
+#legend th{text-align:left;padding:8px 0 3px;color:#EDE6DA;font-weight:600}
+#legend td{padding:1px 0;vertical-align:middle}
+#legend td:first-child{padding-right:10px;white-space:nowrap;font-weight:600;color:#EDE6DA}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px}
+.sw.c-violet{background:var(--m-violet)}.sw.c-blue{background:var(--m-blue)}
+.sw.c-green{background:var(--m-green)}.sw.c-red{background:var(--m-red)}
+.sw.c-clay{background:var(--clay)}.sw.c-grey{background:#7C6E92}
 
 /* -------------------------------------------------------------- load-in once */
 .enter .node{animation:rise .5s cubic-bezier(.2,.8,.3,1) both;animation-delay:var(--in,0s)}
@@ -578,7 +591,6 @@ header{
 @media (max-width:900px){
   header{flex-wrap:wrap;gap:11px;padding:11px 14px}
   #search{width:100%;order:9}
-  .legend{display:none}
 }
 
 /* ------------------------------------------------- city: skyscrapers + roster */
@@ -636,23 +648,11 @@ header{
 #roster .rhead:focus-visible{outline:2px solid var(--clay-lite);outline-offset:-2px}
 #roster .rhead .caret{margin-left:auto;opacity:.6;transition:rotate .18s;rotate:90deg}
 #roster.shut .rhead .caret{rotate:180deg;margin-left:0}
-#roster.shut .rl,#roster.shut .rlist,#roster.shut .rfoot{display:none}
+#roster.shut .rl,#roster.shut .rlist{display:none}
 /* flex:1 with min-height:0 is the fix for the clipped last row: the list takes
    whatever height the rail has left and scrolls inside it, instead of a fixed
    max-height that ignored the header above it. */
 #roster .rlist{flex:1;min-height:0;overflow-y:auto;border-top:1px solid rgba(255,255,255,.08)}
-#roster .rfoot{
-  flex:none;padding:10px 13px 12px;border-top:1px solid rgba(255,255,255,.08);
-  font:400 10.5px/1.45 var(--mono);color:rgba(239,233,247,.55);
-}
-#roster .rfoot div{margin:2px 0}
-#roster .rfoot b{color:rgba(239,233,247,.85);font-weight:600}
-#roster .rfoot .lh{margin:7px 0 3px;color:rgba(239,233,247,.85);font-weight:600;letter-spacing:.02em}
-#roster .rfoot .lh:first-child{margin-top:0}
-#roster .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px}
-#roster .sw.c-violet{background:var(--m-violet)}#roster .sw.c-blue{background:var(--m-blue)}
-#roster .sw.c-green{background:var(--m-green)}#roster .sw.c-red{background:var(--m-red)}
-#roster .sw.c-clay{background:var(--clay)}#roster .sw.c-grey{background:#7C6E92}
 #roster button.r{
   all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;
   width:100%;padding:6px 11px;cursor:pointer;color:#D8D0E4;
@@ -766,10 +766,6 @@ header{
   .blimp{display:none}
 }
 @media (max-width:900px){#roster{display:none}}
-/* The legend moves into the rail footer, where it no longer overlaps the front
-   comb. index.html already hides the in-hive copy below 900px - the same width
-   at which the rail hides - so there is no narrow-width legend either way. */
-#hive>.legend{display:none}
 
 </style>
 </head>
@@ -837,13 +833,27 @@ header{
     </svg>
     <svg class="lyr grain" aria-hidden="true"><rect width="100%" height="100%" filter="url(#grainf)"/></svg>
     <div id="nodes"></div>
-    <div class="legend">
-      <span class="k-near">front comb = touched in the last 30 days</span>
-      <span class="k-far">back comb = dormant, nothing for 30 days</span>
-      <span class="k-mod">roof: clay = waiting on you, red = blocked, violet = has session-state</span>
-      <span class="k-red">blue = git branch, green = transcripts only, grey = nothing on disk yet</span>
-      <span class="k-bot">front-comb villagers each work a trade; back-comb sleeps</span>
-    </div>
+    <!-- ponytail: <details> is the minimise/maximise; JS only remembers which. -->
+    <details id="legend" open>
+      <summary>Legend</summary>
+      <table>
+        <tr><th colspan="2">Roof colour: what it needs</th></tr>
+        <tr><td><span class="sw c-clay"></span></td><td>waiting on you</td></tr>
+        <tr><td><span class="sw c-red"></span></td><td>blocked on someone else</td></tr>
+        <tr><td><span class="sw c-violet"></span></td><td>has a note (session-state.md)</td></tr>
+        <tr><td><span class="sw c-blue"></span></td><td>git only, no note</td></tr>
+        <tr><td><span class="sw c-green"></span></td><td>Claude chats only</td></tr>
+        <tr><td><span class="sw c-grey"></span></td><td>nothing on disk yet</td></tr>
+        <tr><th colspan="2">Building: how far along</th></tr>
+        <tr><td>lot</td><td>planned, never started</td></tr>
+        <tr><td>tent</td><td>just started</td></tr>
+        <tr><td>low-rise</td><td>finding its feet</td></tr>
+        <tr><td>tower</td><td>lots of work</td></tr>
+        <tr><td>crane</td><td>active, with a note</td></tr>
+        <tr><td>dashed roof</td><td>STALE: the note is older than the code</td></tr>
+        <tr><td>front row</td><td>touched in the last 30 days</td></tr>
+      </table>
+    </details>
   </main>
 </div>
 
@@ -3077,24 +3087,7 @@ function buildRoster() {
       + (p.waiting_count ? '<span class="rflag">' + p.waiting_count + '</span>' : '')
       + '<span class="rmeta">' + ago(p.last_activity) + '</span></button>';
   });
-  // The legend, moved here from the bottom of the hive where it overlapped the
-  // front comb. Rewritten for the city: the roof colour lives on the parapet now.
-  // The legend, as colour swatches (CSS classes, not inline styles: CSP).
-  const sw = (c, t) => '<div><span class="sw ' + c + '"></span>' + t + '</div>';
-  html += '</div><div class="rfoot">'
-    + '<div class="lh">Blocks on a cell: what is on disk</div>'
-    + sw("c-violet", "checkpoint file (session-state.md)") + sw("c-blue", "git repo")
-    + sw("c-green", "Claude sessions") + sw("c-red", "open blockers")
-    + '<div class="lh">Roof, parapet or tent: status</div>'
-    + sw("c-clay", "waiting on you") + sw("c-red", "blocked on someone else")
-    + sw("c-violet", "has a checkpoint") + sw("c-blue", "git only") + sw("c-green", "sessions only")
-    + sw("c-grey", "nothing on disk yet")
-    + '<div class="lh">Buildings: how far along</div>'
-    + '<div><b>dirt lot</b> zoned, never built &middot; <b>tent</b> just started</div>'
-    + '<div><b>low-rise</b> finding its footing &middot; <b>tower</b> lots of work</div>'
-    + '<div><b>crane</b> active with a checkpoint &middot; <b>dashed parapet</b> STALE</div>'
-    + '<div><b>front</b> touched in 30 days &middot; <b>back</b> dormant</div>'
-    + '</div>';
+  html += '</div>';
   box.innerHTML = html;
   // CSP blocks inline style attributes; the dot colour goes in through the CSSOM.
   box.querySelectorAll("button.r").forEach((b, i) => b.querySelector(".rdot").style.setProperty("background", roofOf(rows[i])));
@@ -3225,6 +3218,15 @@ load();
 // greet/peek - which reads as a flaky suite rather than as the poll it is.
 let POLL = setInterval(load, 30000);
 
+// The legend remembers whether it was minimised. Per viewer, so localStorage.
+{
+  const lg = document.getElementById("legend");
+  try { if (localStorage.getItem("coc-legend") === "shut") lg.open = false; } catch (e) { /* private mode */ }
+  lg.addEventListener("toggle", () => {
+    try { localStorage.setItem("coc-legend", lg.open ? "open" : "shut"); } catch (e) { /* private mode */ }
+  });
+}
+
 /* -------------------------------------------------------------- demo guide */
 // The live demo's presenter steps (demo/tour.json via COC_TOUR); real use gets
 // [] and never sees a guide. The step survives F5, because the live moment
@@ -3253,6 +3255,8 @@ function tourGo(k) {
   document.getElementById("tour").innerHTML = `<div class="n">Step ${tourAt + 1} of ${TOUR.length}</div>`
     + `<h2>${esc(s.title || "")}</h2>`
     + (s.say ? `<p class="say">${esc(s.say)}</p>` : "")
+    // `backticks` in the step text become <code>, after escaping.
+    + (s.repo ? `<p class="repo"><b>In the repo</b>${esc(s.repo).replace(/`([^`]+)`/g, "<code>$1</code>")}</p>` : "")
     + (s.do ? `<p class="do"><b>Do</b>${esc(s.do)}</p>` : "")
     + `<div class="ctl"><button type="button" data-step="-1"${tourAt ? "" : " disabled"}>&larr; Back</button>`
     + "<span>PgUp / PgDn &middot; T hides</span>"

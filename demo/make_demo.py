@@ -3,6 +3,7 @@
 
     py demo/make_demo.py            # build ../../coc-demo and self-check it
     py demo/make_demo.py --serve    # build, check, then run Product Library on the demo
+    py demo/make_demo.py --code     # build, check, then open every demo project in VS Code
 
 Every timestamp is relative to now, so rebuild right before showing it. Product Library is
 pointed at the demo with COC_REGISTRY / COC_EXTRA_ROOTS; nothing here reads or
@@ -478,8 +479,11 @@ def build(p):
 
 def build_all():
     reset_out()
-    for p in PROJECTS:
-        build(p)
+    # Products share nothing (git() copies its env, -C sets the folder), and each
+    # waits on git subprocesses: in parallel the build takes seconds, not 15.
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(8) as ex:
+        list(ex.map(build, PROJECTS))         # list() re-raises a product's failure here
     for slug in LOTS:                        # a registry entry with nothing behind it
         os.makedirs(os.path.join(OUT, "registry", slug))
     os.makedirs(os.path.join(OUT, "plans"))
@@ -488,6 +492,9 @@ def build_all():
         with open(fp, "w", encoding="utf-8") as fh:
             fh.write(body)
         stamp(fp, age_h)
+    # One VS Code window with every demo project, so the audience can see the files.
+    with open(os.path.join(OUT, "demo.code-workspace"), "w", encoding="utf-8") as fh:
+        json.dump({"folders": [{"path": p["name"]} for p in PROJECTS]}, fh, indent=2)
 
 
 def env():
@@ -611,6 +618,11 @@ if __name__ == "__main__":
         rehearse()
         build_all()                            # leave the demo exactly as it starts on stage
         check()
+    if "--code" in sys.argv:                  # open every demo project in one VS Code window
+        import coc
+        if not coc.VSCODE:
+            sys.exit("VS Code not found. Open %s by hand." % os.path.join(OUT, "demo.code-workspace"))
+        subprocess.Popen([coc.VSCODE, os.path.join(OUT, "demo.code-workspace")])
     if "--serve" in sys.argv:
         # In this process, not a child: check() already imported coc with the
         # demo env, and a child outlived its parent when the parent was killed.
