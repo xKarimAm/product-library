@@ -556,16 +556,23 @@ header{
    it down to its title; the meter owns bottom-left, the guide top-left. */
 #legend{position:absolute;right:14px;bottom:14px;z-index:25;max-height:calc(100% - 28px);overflow:auto;
   background:rgba(22,16,34,.94);border:1px solid rgba(255,255,255,.12);border-radius:12px;
-  box-shadow:0 12px 34px rgba(6,2,16,.45);font:400 12px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;color:rgba(239,233,247,.8)}
+  box-shadow:0 12px 34px rgba(6,2,16,.45);font:400 var(--lgz,12px)/1.4 system-ui,-apple-system,Segoe UI,sans-serif;color:rgba(239,233,247,.8)}
 #legend summary{cursor:pointer;padding:8px 12px;font-weight:650;color:#EDE6DA;list-style:none;display:flex;gap:10px;align-items:center;user-select:none}
 #legend summary::-webkit-details-marker{display:none}
-#legend summary::after{content:'show';margin-left:auto;font-weight:400;font-size:11px;opacity:.6}
+#legend summary::after{content:'show';margin-left:auto;padding-left:10px;font-weight:400;font-size:11px;opacity:.6}
 #legend[open] summary::after{content:'hide'}
 #legend summary:focus-visible{outline:2px solid var(--clay-lite);outline-offset:-2px;border-radius:12px}
 #legend table{border-collapse:collapse;margin:0 12px 10px}
 #legend th{text-align:left;padding:8px 0 3px;color:#EDE6DA;font-weight:600}
 #legend td{padding:1px 0;vertical-align:middle}
 #legend td:first-child{padding-right:10px;white-space:nowrap;font-weight:600;color:#EDE6DA}
+#legend td[colspan]{font-weight:400;color:inherit}
+#legend .sw{width:.9em;height:.9em;margin-right:.55em}
+/* A- / A+ : text size, for the back row. Only while open. */
+#legend .lgz{display:flex;gap:4px;margin-left:6px}
+#legend:not([open]) .lgz{display:none}
+#legend .lgz button{all:unset;cursor:pointer;padding:1px 7px;border-radius:6px;background:rgba(255,255,255,.1);font:600 11px system-ui,sans-serif;color:#EDE6DA}
+#legend .lgz button:hover,#legend .lgz button:focus-visible{background:rgba(255,255,255,.22)}
 .sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px}
 .sw.c-violet{background:var(--m-violet)}.sw.c-blue{background:var(--m-blue)}
 .sw.c-green{background:var(--m-green)}.sw.c-red{background:var(--m-red)}
@@ -835,15 +842,15 @@ header{
     <div id="nodes"></div>
     <!-- ponytail: <details> is the minimise/maximise; JS only remembers which. -->
     <details id="legend" open>
-      <summary>Legend</summary>
+      <summary>Legend<span class="lgz"><button type="button" data-z="-1" aria-label="Smaller legend">A&minus;</button><button type="button" data-z="1" aria-label="Bigger legend">A+</button></span></summary>
       <table>
         <tr><th colspan="2">Roof colour: what it needs</th></tr>
-        <tr><td><span class="sw c-clay"></span></td><td>waiting on you</td></tr>
-        <tr><td><span class="sw c-red"></span></td><td>blocked on someone else</td></tr>
-        <tr><td><span class="sw c-violet"></span></td><td>has a note (session-state.md)</td></tr>
-        <tr><td><span class="sw c-blue"></span></td><td>git only, no note</td></tr>
-        <tr><td><span class="sw c-green"></span></td><td>Claude chats only</td></tr>
-        <tr><td><span class="sw c-grey"></span></td><td>nothing on disk yet</td></tr>
+        <tr><td colspan="2"><span class="sw c-clay"></span>waiting on you</td></tr>
+        <tr><td colspan="2"><span class="sw c-red"></span>blocked on someone else</td></tr>
+        <tr><td colspan="2"><span class="sw c-violet"></span>has a note (session-state.md)</td></tr>
+        <tr><td colspan="2"><span class="sw c-blue"></span>git only, no note</td></tr>
+        <tr><td colspan="2"><span class="sw c-green"></span>Claude chats only</td></tr>
+        <tr><td colspan="2"><span class="sw c-grey"></span>nothing on disk yet</td></tr>
         <tr><th colspan="2">Building: how far along</th></tr>
         <tr><td>lot</td><td>planned, never started</td></tr>
         <tr><td>tent</td><td>just started</td></tr>
@@ -3224,6 +3231,20 @@ let POLL = setInterval(load, 30000);
   try { if (localStorage.getItem("coc-legend") === "shut") lg.open = false; } catch (e) { /* private mode */ }
   lg.addEventListener("toggle", () => {
     try { localStorage.setItem("coc-legend", lg.open ? "open" : "shut"); } catch (e) { /* private mode */ }
+  });
+  // A- / A+ step the text size; the panel and its swatches scale with it (em).
+  const SIZES = [11, 12, 14, 16, 19, 22];
+  let z = 1;
+  try { z = Math.max(0, Math.min(SIZES.length - 1, Number(localStorage.getItem("coc-legend-z") ?? 1))); } catch (e) { /* private mode */ }
+  const setZ = () => lg.style.setProperty("--lgz", SIZES[z] + "px");   // CSSOM: CSP allows it
+  setZ();
+  lg.querySelector(".lgz").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    e.preventDefault();                        // a click inside <summary> would also fold the legend
+    z = Math.max(0, Math.min(SIZES.length - 1, z + Number(b.dataset.z)));
+    setZ();
+    try { localStorage.setItem("coc-legend-z", String(z)); } catch (e2) { /* private mode */ }
   });
 }
 

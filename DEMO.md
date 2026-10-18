@@ -47,7 +47,7 @@ Real use never shows it: only the demo sets `COC_TOUR`.
 How far along a project is reads as its building: **dirt lot** (registry entry, nothing on disk),
 **tent** (just started: defining it, or no checkpoint yet), **low-rise** (finding its footing),
 **tower** (lots of work). A crane means it is active with a checkpoint. The legend floats at the
-bottom right of the city; click its title to hide or show it (the choice is remembered).
+bottom right of the city; click its title to hide or show it (the choice is remembered); **A− / A+** in its title make the text smaller or bigger.
 
 `py demo/make_demo.py --code` builds the demo and opens all 18 projects in one VS Code window
 (`../coc-demo/demo.code-workspace`). Every building's **Open in VS Code** button opens just that one.
