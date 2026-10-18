@@ -1,7 +1,8 @@
 """In-memory URL shortener on the standard library. Sketch: no persistence yet.
 
     py shortener.py                       # serves http://127.0.0.1:8099
-    GET /new?url=https://example.com      -> short code
+    GET /new?url=https://example.com      -> short code (the same URL keeps its code)
+    GET /                                 -> every link so far
     GET /<code>                           -> 302 to the long URL
 """
 import http.server
@@ -18,9 +19,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             target = (parse_qs(u.query).get("url") or [""])[0]
             if not target.startswith(("http://", "https://")):
                 return self.reply(400, "url must start with http:// or https://")
-            code = secrets.token_urlsafe(4)
+            code = next((c for c, t in LINKS.items() if t == target), None)
+            while code is None or LINKS.get(code, target) != target:
+                code = secrets.token_urlsafe(4)       # never hand out a code already taken
             LINKS[code] = target
             return self.reply(200, code)
+        if u.path == "/":
+            return self.reply(200, "\n".join("%s -> %s" % kv for kv in sorted(LINKS.items())) or "no links yet")
         target = LINKS.get(u.path.lstrip("/"))
         if not target:
             return self.reply(404, "unknown code")

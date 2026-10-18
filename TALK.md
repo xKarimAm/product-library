@@ -1,7 +1,8 @@
 # Talk: Product Library (about 10 minutes)
 
 Deck: `docs/presentation.html` (6 slides). Then the live app, where the guide on screen
-carries the demo: 14 steps, each with what to say, what to do, and what is really in the repo.
+carries the demo: 14 steps, each one short text for you and the room, with numbered markers on
+screen showing exactly what it means, and the live commands where you type them.
 
 ## On the presenting laptop, before you start
 1. Windows Settings > Accessibility > Visual effects > **Animation effects ON**.

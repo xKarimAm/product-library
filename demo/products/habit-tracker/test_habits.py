@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from habits import streak
+from habits import streak, week
 
 TODAY = date(2026, 10, 17)
 
@@ -15,6 +15,7 @@ class StreakTest(unittest.TestCase):
 
     def test_gap_breaks_the_streak(self):
         self.assertEqual(streak(["2026-10-13", "2026-10-17"], TODAY), 1)
+        self.assertEqual(week(["2026-10-13", "2026-10-17"], TODAY), "..#...#")
 
 
 if __name__ == "__main__":

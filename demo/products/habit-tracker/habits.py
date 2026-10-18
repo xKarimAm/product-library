@@ -2,6 +2,7 @@
 
     py habits.py done reading
     py habits.py streaks
+    py habits.py week                 # the last seven days, one row per habit
 """
 import json
 import os
@@ -23,6 +24,13 @@ def streak(days, today):
     return n
 
 
+def week(days, today):
+    """The last seven days, oldest first: '#' done, '.' missed."""
+    have = set(days)
+    return "".join("#" if (today - timedelta(days=k)).isoformat() in have else "."
+                   for k in range(6, -1, -1))
+
+
 def load():
     try:
         with open(STORE, encoding="utf-8") as fh:
@@ -40,7 +48,10 @@ def main(argv):
         with open(STORE, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2)
     for name, days in sorted(data.items()):
-        print("%-12s %3d day streak" % (name, streak(days, date.today())))
+        if argv[:1] == ["week"]:
+            print("%-12s %s" % (name, week(days, date.today())))
+        else:
+            print("%-12s %3d day streak" % (name, streak(days, date.today())))
 
 
 if __name__ == "__main__":

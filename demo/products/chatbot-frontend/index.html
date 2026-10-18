@@ -33,7 +33,11 @@
     [/price|cost/i, "Pricing depends on which model provider gets picked."],
     [/help/i, "Try: hello, price, or anything else."],
   ];
-  const reply = (t) => (RULES.find(([re]) => re.test(t)) || [, "Noted: \"" + t + "\". A real model will answer soon."])[1];
+  // No rule matched: rotate through these, so the same line never comes twice in a row.
+  const FALLBACK = ['Noted: "%s". A real model will answer soon.', 'Good question. "%s" goes to the model once it is wired in.',
+                    'I only know canned lines for now, but "%s" is saved for later.'];
+  let turn = 0;
+  const reply = (t) => (RULES.find(([re]) => re.test(t)) || [, FALLBACK[turn++ % FALLBACK.length].replace("%s", t)])[1];
   function add(text, who) {
     const m = document.createElement("div");
     m.className = "msg " + who;

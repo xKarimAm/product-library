@@ -161,11 +161,18 @@ def extra(i, name, about, kind, n, age, nxt):
     first = age + 24 * (3 + n % 9)
     newest = age + (0.3 if kind == "stale" else 0)       # stale: the commit is the newest work
     step = (first - newest) / max(1, n - 1)
+    # The towers carry real code (demo/products/<name>/main.py, with a real
+    # --selftest); the rest of the crowd is a stub that only says what it is.
+    real = os.path.join(HERE, "products", name, "main.py")
+    if os.path.exists(real):
+        with open(real, encoding="utf-8") as fh:
+            main = fh.read()
+    else:
+        main = ('"""%s."""\nimport sys\n\nif __name__ == "__main__":\n'
+                '    print("OK" if "--selftest" in sys.argv else %r)\n' % (about, name + ": " + about))
     p = {
         "name": name,
-        "files": {"README.md": "# %s\n\n%s.\n\n    py main.py\n" % (name, about),
-                  "main.py": '"""%s."""\nimport sys\n\nif __name__ == "__main__":\n'
-                             '    print("OK" if "--selftest" in sys.argv else %r)\n' % (about, name + ": " + about)},
+        "files": {"README.md": "# %s\n\n%s.\n\n    py main.py\n" % (name, about), "main.py": main},
         "commits": [(first + 0.5, "Start " + name, ["README.md", ".gitignore"]),
                     (age if kind == "stale" else newest + 0.5, about, ["main.py"])],
         "sessions": [(first - k * step, ["build " + about[0].lower() + about[1:]] if k == 0

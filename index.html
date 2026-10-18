@@ -488,13 +488,23 @@ header{
 #tour .n{font:600 13px var(--display);letter-spacing:.08em;text-transform:uppercase;color:#F4C04E}
 #tour h2{margin:4px 0 8px;font:600 24px/1.2 var(--display);letter-spacing:-.01em}
 #tour .say{margin:0 0 10px;font:400 18px/1.45 var(--display)}
-/* What is really on disk behind this step: the point of the demo, so it gets its own block. */
-#tour .repo{margin:0 0 10px;padding:9px 11px;border-radius:9px;background:rgba(139,92,246,.16);border-left:3px solid var(--m-violet);
-  font:400 14.5px/1.45 var(--display);color:#E4DAFB}
-#tour .repo b{display:block;margin-bottom:2px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C4B0FA}
-#tour .repo code{font:500 13px var(--mono);color:#fff;background:rgba(0,0,0,.25);padding:0 4px;border-radius:4px}
-#tour .do{margin:0;padding:9px 11px;border-radius:9px;background:rgba(244,192,78,.12);font:400 15.5px/1.45 var(--display);color:#F7E3B0}
-#tour .do b{margin-right:7px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#F4C04E}
+#tour .say code{font:500 15px var(--mono);color:#fff;background:rgba(255,255,255,.1);padding:0 5px;border-radius:5px}
+/* The live steps' commands: the one thing the presenter types, so it reads as a terminal line. */
+#tour .run{margin:0 0 4px;padding:9px 11px;border-radius:9px;background:rgba(0,0,0,.35);border-left:3px solid #F4C04E;
+  font:400 14px/1.5 var(--display);color:#F7E3B0}
+#tour .run code{display:block;font:500 14px var(--mono);color:#fff}
+/* The numbered dot in the text is the same number as the ring on screen. */
+.mk{display:inline-grid;place-items:center;width:21px;height:21px;border-radius:50%;flex:none;
+  background:#F4C04E;color:#1E1430;font:700 12.5px/1 var(--display);vertical-align:2px}
+#tourmarks{position:fixed;inset:0;z-index:58;pointer-events:none}
+#tourmarks[hidden],#tourmarks .at[hidden]{display:none}
+#tourmarks .ring{position:fixed;border:3px solid #F4C04E;border-radius:12px;
+  box-shadow:0 0 0 4px rgba(244,192,78,.22),0 0 26px rgba(244,192,78,.5);animation:mkpulse 1.6s ease-in-out infinite}
+#tourmarks .tag{position:fixed;display:flex;align-items:center;gap:7px;padding:4px 11px 4px 4px;border-radius:999px;
+  background:#1E1430;color:#F4F1EA;border:1px solid #F4C04E;font:600 14px var(--display);white-space:nowrap;
+  box-shadow:0 8px 22px rgba(6,2,16,.5)}
+@keyframes mkpulse{50%{box-shadow:0 0 0 9px rgba(244,192,78,.1),0 0 34px rgba(244,192,78,.7)}}
+@media (prefers-reduced-motion:reduce){#tourmarks .ring{animation:none}}
 #tour .ctl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
 #tour .ctl span{font-size:12.5px;opacity:.6}
 #tour button{padding:8px 14px;border-radius:9px;background:#F4C04E;color:#1E1430;font:600 15px var(--display)}
@@ -2351,15 +2361,15 @@ function openBubble(id) {
   const st = (p.status || "").toLowerCase();
   const badge = (p.status ? `<span class="badge ${esc(st)}">${esc(p.status)}</span>` : "")
     + (p.stage ? `<span class="badge stage">${esc(p.stage)}</span>` : "")
-    + (p.drift ? `<span class="badge stale">STALE</span>` : "");
+    + (p.drift ? `<span class="badge stale" data-k="stale">STALE</span>` : "");
   const bits = [ago(p.last_activity)];
   if (p.branch) bits.push(esc(p.branch));
   if (p.dirty) bits.push(p.dirty + " dirty");
 
   let body;
   if (p.next_action) {
-    body = `<div class="lead">${p.drift ? "NEXT (written before the latest work)" : "NEXT"}</div>`
-      + `<p class="say">${esc(p.next_action)}</p>`;
+    body = `<div data-k="next"><div class="lead">${p.drift ? "NEXT (written before the latest work)" : "NEXT"}</div>`
+      + `<p class="say">${esc(p.next_action)}</p></div>`;
   } else if (p.prompts && p.prompts.length) {
     body = `<div class="lead">${p.prompt_trivial ? "LAST PROMPT (says little)" : "LAST PROMPT"}</div>`
       + `<p class="say mono">${esc(p.prompts[p.prompts.length - 1])}</p>`;
@@ -2380,12 +2390,12 @@ function openBubble(id) {
   // first. A folder that no longer exists has no gate, so nothing renders.
   // What showed the last step worked, as /coc-checkpoint recorded it.
   const proof = p.proof
-    ? `<div class="gate"><div class="lead">PROOF</div><p class="why">${esc(p.proof)}</p></div>`
+    ? `<div class="gate" data-k="proof"><div class="lead">PROOF</div><p class="why">${esc(p.proof)}</p></div>`
     : "";
   // The story, straight from the transcripts: the first real prompt (why it
   // exists), Claude's own title for the latest session, and what shipped.
   const story = p.origin_prompt || p.latest_chapter || p.pr_count
-    ? `<div class="gate">`
+    ? `<div class="gate" data-k="story">`
       + (p.origin_prompt ? `<div class="lead">STARTED AS &middot; ${esc((p.origin_at || "").slice(0, 10))}</div>`
         + `<p class="why mono">${esc(p.origin_prompt)}</p>` : "")
       + (p.latest_chapter ? `<div class="lead">CHAPTER ${p.chapter_count} &middot; CLAUDE'S TITLE</div>`
@@ -2397,20 +2407,20 @@ function openBubble(id) {
   // The catalog card: who it is for and why it mattered, so a building found
   // months later explains itself.
   const card = p.for || p.bet
-    ? `<div class="gate">` + (p.for ? `<div class="lead">FOR</div><p class="why">${esc(p.for)}</p>` : "")
+    ? `<div class="gate" data-k="card">` + (p.for ? `<div class="lead">FOR</div><p class="why">${esc(p.for)}</p>` : "")
       + (p.bet ? `<div class="lead">WHY IT MATTERS</div><p class="why">${esc(p.bet)}</p>` : "") + `</div>`
     : "";
 
   const gate = p.gate
-    ? `<div class="gate"><div class="lead">GATE &middot; ${p.gate === "fail" ? "<b>FAIL</b>" : "PASS"}`
+    ? `<div class="gate" data-k="gate"><div class="lead">GATE &middot; ${p.gate === "fail" ? "<b>FAIL</b>" : "PASS"}`
       + (p.gap_count ? ` (${p.gap_count} ${p.gap_count > 1 ? "gaps" : "gap"})` : "") + `</div>`
       + (p.gate_next ? `<p class="why">${esc(p.gate_next)}</p>` : "") + `</div>`
     : "";
 
   const flags = p.waiting_count
-    ? `<div class="lead">WAITING ON YOU (${p.waiting_count})</div><ul class="flags"><li>`
+    ? `<div data-k="decisions"><div class="lead">WAITING ON YOU (${p.waiting_count})</div><ul class="flags"><li>`
       + `<b>${p.waiting_count}</b>${p.waiting_count > 1 ? "decisions" : "decision"} on record. `
-      + `Open the full view to read them.</li></ul>`
+      + `Open the full view to read them.</li></ul></div>`
     : "";
 
   const acts = [];
@@ -2496,8 +2506,9 @@ function sheet(title, html) {
   hive.appendChild(s);
   return s;
 }
-const sec = (h, body) => `<section><h3>${h}</h3>${body}</section>`;
-const stat = (v, l) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+// k names the block for the demo guide's markers (data-k); real use ignores it.
+const sec = (h, body, k) => `<section${k ? ` data-k="${k}"` : ""}><h3>${h}</h3>${body}</section>`;
+const stat = (v, l, k) => `<div class="stat"${k ? ` data-k="${k}"` : ""}><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
 
 async function projectSheet(id) {
   let p;
@@ -2518,20 +2529,20 @@ async function projectSheet(id) {
   if (p.drift) {
     out.push(sec("STALE STATE", `<p class="prose">The latest ${esc(p.drift.by)} is `
       + `${esc(p.drift.behind_hours)}h newer than session-state.md, so NEXT ACTION may describe `
-      + "a point the work has already moved past. Run /coc-checkpoint to refresh it.</p>"));
+      + "a point the work has already moved past. Run /coc-checkpoint to refresh it.</p>", "stale"));
   }
   if (p.gate) {
     out.push(sec("GATE &middot; " + (p.gate.verdict === "fail" ? '<b class="fail">FAIL</b>' : "PASS"),
       p.gate.gaps.length
         ? '<ul class="flags">' + p.gate.gaps.map((g) =>
             `<li class="${g.hard ? "" : "other"}">${esc(g.question)}${g.hard ? "" : " (soft)"}</li>`).join("") + "</ul>"
-        : '<p class="prose">Every check passes.</p>'));
+        : '<p class="prose">Every check passes.</p>', "gate"));
   }
-  if (st.next_action) out.push(sec("NEXT ACTION", `<div class="card prose">${esc(st.next_action)}</div>`));
+  if (st.next_action) out.push(sec("NEXT ACTION", `<div class="card prose">${esc(st.next_action)}</div>`, "next"));
   if (st.for) out.push(sec("WHO IT'S FOR", `<div class="card prose">${esc(st.for)}</div>`));
   if (st.bet) out.push(sec("WHY IT MATTERS", `<div class="card prose">${esc(st.bet)}</div>`));
   if (st.stage) out.push(sec("STAGE", `<p class="prose">${esc(st.stage)}</p>`));
-  if (st.proof) out.push(sec("PROOF", `<div class="card prose">${esc(st.proof)}</div>`));
+  if (st.proof) out.push(sec("PROOF", `<div class="card prose">${esc(st.proof)}</div>`, "proof"));
   if (st.status) out.push(sec("STATUS", `<p class="prose">${esc(st.status)}</p>`));
   if (st.current_task) out.push(sec("CURRENT TASK", `<div class="card prose">${esc(st.current_task)}</div>`));
   if ((p.blockers || []).length) {
@@ -2544,12 +2555,12 @@ async function projectSheet(id) {
     const now = (p.prompts || []).slice(-1)[0];
     out.push(sec("HOW IT STARTED &rarr; WHERE IT IS NOW",
       `<div class="card body"><b>${esc((p.origin.at || "").slice(0, 10))}</b> ${esc(p.origin.prompt)}</div>`
-      + (now && now !== p.origin.prompt ? `<div class="card body"><b>latest</b> ${esc(now)}</div>` : "")));
+      + (now && now !== p.origin.prompt ? `<div class="card body"><b>latest</b> ${esc(now)}</div>` : ""), "origin"));
   }
   if ((p.chapters || []).length) {
     out.push(sec(`CHAPTERS &middot; Claude's title for each session (${p.chapters.length})`,
       '<ol class="chapters">' + p.chapters.map((c) =>
-        `<li><div class="ch"><span>${esc(c.title)}</span><span class="when">${esc((c.at || "").slice(0, 10))}</span></div></li>`).join("") + "</ol>"));
+        `<li><div class="ch"><span>${esc(c.title)}</span><span class="when">${esc((c.at || "").slice(0, 10))}</span></div></li>`).join("") + "</ol>", "chapters"));
   }
   if ((p.prs || []).length) {
     // URLs are https-only by the time they get here (_story_in drops the rest).
@@ -2614,12 +2625,12 @@ function reportSheet() {
   sheet("Report", `<div class="stats">${stat(n((p) => p.gate === "pass"), "pass")}`
     + `${stat(n((p) => p.gate === "fail"), "fail")}${stat(n((p) => p.drift), "stale")}`
     + `${stat(n((p) => p.has_state), "with state")}`
-    + `${stat(checks.filter((c) => c.ok).length + "/" + checks.length, "checks hold")}`
+    + `${stat(checks.filter((c) => c.ok).length + "/" + checks.length, "checks hold", "checks")}`
     + `${stat(written, "only written")}</div>`
     + '<p class="prose"><b>Checked</b> means this scan verified it: the state is newer than the work, '
     + "a cited commit is in the repo, a quote is word for word in its file. <b>Only written down</b> "
     + "is a filled-in line nothing checked. A checked line's other words are still only written.</p>"
-    + rows.map((p) => `<section class="rep"><h3>${esc(p.name)}</h3>`
+    + rows.map((p) => `<section class="rep" data-row="${esc(p.name)}"><h3>${esc(p.name)}</h3>`
       // One left-hand element: .row is space-between flex, so loose text and
       // the <b> would each become a flex item and spread across the row.
       + `<div class="row"><div>${p.stage ? esc(p.stage) : "no stage"} &middot; GATE ${verdict(p)}`
@@ -3277,10 +3288,11 @@ function tourGo(k) {
   const s = TOUR[tourAt];
   document.getElementById("tour").innerHTML = `<div class="n">Step ${tourAt + 1} of ${TOUR.length}</div>`
     + `<h2>${esc(s.title || "")}</h2>`
-    + (s.say ? `<p class="say">${esc(s.say)}</p>` : "")
-    // `backticks` in the step text become <code>, after escaping.
-    + (s.repo ? `<p class="repo"><b>In the repo</b>${esc(s.repo).replace(/`([^`]+)`/g, "<code>$1</code>")}</p>` : "")
-    + (s.do ? `<p class="do"><b>Do</b>${esc(s.do)}</p>` : "")
+    // After escaping: `backticks` become <code>, [1] the dot matching marker 1.
+    + (s.say ? `<p class="say">${esc(s.say).replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\[(\d)\]/g, '<span class="mk">$1</span>')}</p>` : "")
+    // The live steps' commands, then what to do once they ran.
+    + ((s.run || []).length ? `<p class="run">${s.run.map((r, i) => i ? esc(r) : `<code>${esc(r)}</code>`).join("")}</p>` : "")
     + `<div class="ctl"><button type="button" data-step="-1"${tourAt ? "" : " disabled"}>&larr; Back</button>`
     + "<span>PgUp / PgDn &middot; T hides</span>"
     + `<button type="button" data-step="1"${tourAt < TOUR.length - 1 ? "" : " disabled"}>Next &rarr;</button></div>`;
@@ -3288,12 +3300,103 @@ function tourGo(k) {
   const to = s.view === "report" ? "/report" : s.view === "full" && p ? "/p/" + encodeURIComponent(p.id) : "/";
   if (location.pathname !== to) go(to);
   if (to === "/") { if (p) openBubble(p.id); else closeBubble(); }
+  marksSet(s);
+}
+
+// Markers: a numbered ring on each thing the step's text points at, because
+// the city has a lot going on. A target is a data-k block in the open full
+// view or bubble ("proof", "gate", "next"...), or one of the names below.
+// Targets come and go (the full view loads async, the city redraws every
+// refresh), so each frame looks them up again; the loop runs only while the
+// step has markers and the guide is showing.
+const MARK_AT = {
+  legend: () => document.getElementById("legend"),
+  waiting: () => document.getElementById("waiting"),
+  building: (s) => chipOf(s.focus),
+  node: (s, a) => chipOf(a),
+  row: (s, a) => document.querySelector(`#sheet [data-row="${CSS.escape(a)}"]`),
+  vscode: () => document.querySelector('#sheet [data-act="open"], #bubble [data-act="open"]'),
+};
+function chipOf(name) {
+  const p = PROJECTS.find((x) => x.name === name);
+  return p ? document.querySelector(`.node[data-id="${CSS.escape(p.id)}"]`) : null;
+}
+function markTarget(s, at) {
+  const [k, a] = String(at).split(":");
+  if (MARK_AT[k]) return MARK_AT[k](s, a);
+  const q = `[data-k="${CSS.escape(k)}"]`;
+  return document.querySelector("#sheet " + q) || document.querySelector("#bubble " + q);
+}
+let markRaf = 0, markScrolled = false;
+function marksSet(s) {
+  let layer = document.getElementById("tourmarks");
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "tourmarks";
+    layer.setAttribute("aria-hidden", "true");      // the guide's text already says it
+    document.body.appendChild(layer);
+  }
+  layer.innerHTML = (s.mark || []).map(([, label], i) => `<div class="at" hidden><div class="ring"></div>`
+    + `<div class="tag"><span class="mk">${i + 1}</span>${esc(label || "")}</div></div>`).join("");
+  markScrolled = false;
+  marksKick();
+}
+function marksKick() {
+  if (!markRaf) markRaf = requestAnimationFrame(marksDraw);
+}
+function marksDraw() {
+  markRaf = 0;
+  const layer = document.getElementById("tourmarks"), t = document.getElementById("tour");
+  const s = TOUR[tourAt], marks = s && s.mark || [];
+  layer.hidden = !marks.length || t.hidden;
+  if (layer.hidden) return;                          // T or a step with no markers: stop the loop
+  const W = innerWidth, H = innerHeight, g = t.getBoundingClientRect();
+  // Pass 1: find each target and draw its ring.
+  const rings = marks.map(([at], i) => {
+    const m = layer.children[i], el = markTarget(s, at);
+    if (el && !markScrolled && el.closest("#sheet")) {   // once per step: bring the first one into view
+      markScrolled = true;
+      el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    }
+    let r = el && el.getBoundingClientRect();
+    // Scrolled out of the full view's own scroll box: no ring floating over nothing.
+    const box = el && el.closest("#sheet")?.getBoundingClientRect();
+    if (r && box && (r.bottom < box.top + 8 || r.top > box.bottom - 8)) r = null;
+    m.hidden = !r || !r.width || !r.height;
+    if (m.hidden) return null;
+    const q = { left: r.left - 6, top: r.top - 6, right: r.right + 6, bottom: r.bottom + 6 };
+    const ring = m.firstChild;
+    ring.style.setProperty("left", q.left + "px");
+    ring.style.setProperty("top", q.top + "px");
+    ring.style.setProperty("width", q.right - q.left + "px");
+    ring.style.setProperty("height", q.bottom - q.top + "px");
+    return q;
+  });
+  // Pass 2: each tag goes to the first spot around its ring that covers
+  // neither the guide, another ring nor a tag already placed.
+  const taken = [g];
+  rings.forEach((q, i) => {
+    if (!q) return;
+    const tag = layer.children[i].lastChild, tw = tag.offsetWidth, th = tag.offsetHeight;
+    const clampX = (v) => Math.max(4, Math.min(v, W - tw - 4));
+    const above = q.top - th - 6, below = q.bottom + 6;
+    const spots = [[clampX(q.left), above], [clampX(q.right - tw), above], [clampX(q.left), below],
+                   [clampX(q.right - tw), below], [clampX(g.right + 8), above], [clampX(g.right + 8), below]]
+      .filter(([, ty]) => ty >= 4 && ty + th <= H - 4);
+    const hits = (tx, ty) => taken.concat(rings.filter((o, j) => o && j !== i)).some((o) =>
+      tx < o.right && tx + tw > o.left && ty < o.bottom && ty + th > o.top);
+    const [tx, ty] = spots.find(([a, b]) => !hits(a, b)) || spots[0] || [clampX(q.left), Math.max(4, q.top)];
+    tag.style.setProperty("left", tx + "px");
+    tag.style.setProperty("top", ty + "px");
+    taken.push({ left: tx, top: ty, right: tx + tw, bottom: ty + th });
+  });
+  marksKick();
 }
 // PageUp/PageDown is what a presentation clicker sends.
 addEventListener("keydown", (e) => {
   const t = document.getElementById("tour");
   if (!t || e.target === search || e.ctrlKey || e.altKey || e.metaKey) return;
-  if (e.key === "t" || e.key === "T") t.hidden = !t.hidden;
+  if (e.key === "t" || e.key === "T") { t.hidden = !t.hidden; marksKick(); }
   else if (t.hidden) return;
   else if (e.key === "PageDown") { e.preventDefault(); tourGo(tourAt + 1); }
   else if (e.key === "PageUp") { e.preventDefault(); tourGo(tourAt - 1); }

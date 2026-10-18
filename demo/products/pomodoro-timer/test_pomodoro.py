@@ -1,11 +1,12 @@
 import unittest
 
-from pomodoro import mmss, schedule
+from pomodoro import mmss, schedule, total
 
 
 class PomodoroTest(unittest.TestCase):
     def test_no_break_after_last_round(self):
         self.assertEqual(schedule(2), [("work", 25), ("break", 5), ("work", 25)])
+        self.assertEqual(total(schedule(2)), 55)
 
     def test_long_break_after_fourth_round(self):
         self.assertEqual(schedule(5)[7], ("long break", 15))

@@ -36,9 +36,11 @@ To force it, open `http://127.0.0.1:7777/?hour=22` for night or `?hour=12` for d
 
 ## The on-screen guide
 
-`--serve` shows a guide panel at the top left: 14 steps, each with what to say, what to do
-(including the two live commands) and **In the repo**: the file or commit behind what is on screen, in plain words. **PgDn** next, **PgUp** back (a presentation clicker sends these),
-**T** hides it for questions. It moves the app for you: opens the right building, the full view, the
+`--serve` shows a guide panel at the top left: 14 steps, each one short text that works for you and
+the audience. A number in the text, like **1**, matches a pulsing ring on screen around the thing
+it means (the PROOF line, the gate, the STALE pill, a building), so nobody has to hunt in a busy city.
+The two live steps also show the command to type. **PgDn** next, **PgUp** back (a presentation clicker sends these),
+**T** hides the guide and its markers for questions. It moves the app for you: opens the right building, the full view, the
 report. It survives F5, and a new tab starts again at step 1. Edit the steps in `demo/tour.json`.
 Real use never shows it: only the demo sets `COC_TOUR`.
 

@@ -21,9 +21,10 @@ class CalculatorTest(unittest.TestCase):
             evaluate("1 / (2 - 2)")
 
     def test_rejects_garbage(self):
-        for bad in ("2 +", "(1 + 2", "2 $ 3"):
-            with self.assertRaises(ValueError):
+        for bad, at in (("2 +", 3), ("(1 + 2", 6), ("2 $ 3", 2), ("2 + * 3", 4)):
+            with self.assertRaises(ValueError) as ctx:
                 evaluate(bad)
+            self.assertEqual(ctx.exception.at, at, bad)   # the caret lands on the culprit
 
 
 if __name__ == "__main__":
