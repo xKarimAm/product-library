@@ -62,18 +62,18 @@ iframe{width:100%;height:62vh;border:1px solid var(--line);border-radius:14px;ba
       <g fill="#111"><rect x="3" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/></g>
     </svg>
     <div>
-      <div class="kick">A city out of everything I've started</div>
+      <div class="kick">A dashboard that checks its own notes</div>
       <h1>Product Library</h1>
     </div>
   </div>
-  <p class="lede">A local, read-only dashboard that turns every project I've started with Claude Code into a living SimCity-style city, so none of my prototypes get lost.</p>
+  <p class="lede">Every project I've started with Claude Code, as a SimCity-style city. Local and read-only. It shows which notes about my work are still true.</p>
 </section>
 
 <section>
   <div class="kick">Why I built it</div>
-  <h2>I start a lot of things. Some of them just disappear.</h2>
-  <p class="big">Prototypes, side projects and little tools, spread across folders and subfolders. The question I kept asking: <em>where did I leave off, and is that note still true?</em></p>
-  <p class="lede">So I wanted one place that tracks every one of them: a product library, with the fun of SimCity, personal to me.</p>
+  <h2>I don't trust notes. Mine or Claude's.</h2>
+  <p class="big">Every project ends with a note: <em>"next: add tests"</em>, <em>"tests pass, commit 4f9e2a1"</em>. Weeks later I come back and ask: <em>where did I leave off, and is that note still true?</em></p>
+  <p class="lede"><code>git log</code> tells me what happened. It doesn't tell me the note is out of date, or that the commit it cites was never made.</p>
 </section>
 
 <section>
@@ -90,13 +90,14 @@ iframe{width:100%;height:62vh;border:1px solid var(--line);border-radius:14px;ba
     <div class="card"><h3><span class="dot d-red"></span>Blocked</h3><p>Waiting on someone else.</p></div>
     <div class="card"><h3><span class="dot d-violet"></span>Checkpointed</h3><p>Has a written "where I left off".</p></div>
   </div>
+  <p class="small">The fun parts carry data: height is work done, colour is state, a dashed roof means the note went stale.</p>
 </section>
 
 <section>
   <div class="kick">How it works</div>
   <h2>It only reads what's already on disk</h2>
   <div class="flow">
-    <div class="card"><h3>Claude Code history</h3><p><code>~/.claude/projects/*.jsonl</code>: every project's real folder, last prompt, sessions, last activity.</p></div>
+    <div class="card"><h3>Claude Code history</h3><p><code>~/.claude/projects/*.jsonl</code>: every project's real folder, first and last prompt, Claude's title for each session, PRs.</p></div>
     <div class="card"><h3>Git</h3><p>Branch, last commit, uncommitted work, and checking that cited commits exist.</p></div>
     <div class="card"><h3>One checkpoint file</h3><p><code>session-state.md</code>: stage, next step, proof, blockers. Written by my <code>/coc-checkpoint</code> skill.</p></div>
     <div class="arrow">&rarr;</div>
@@ -108,14 +109,36 @@ iframe{width:100%;height:62vh;border:1px solid var(--line);border-radius:14px;ba
 </section>
 
 <section>
+  <div class="kick">The core idea</div>
+  <h2>Three ways a note lies, three cheap checks</h2>
+  <div class="grid g3">
+    <div class="card"><h3>It's out of date</h3><p>Work landed after the note was written. Compare the note's save time with the newest commit and session: <em>STALE</em>.</p></div>
+    <div class="card"><h3>It cites a commit that doesn't exist</h3><p>"Tests pass, commit 4f9e2a1." Ask git: <code>cat-file -e 4f9e2a1^{commit}</code>. Never made.</p></div>
+    <div class="card"><h3>It misquotes its source</h3><p>"NOTES.md: 'two hours a day'". The file says two hours a <em>week</em>. A word-for-word match catches it.</p></div>
+  </div>
+  <p class="small">No model grades anything. Every check is deterministic, so it gives the same answer every time.</p>
+</section>
+
+<section>
+  <div class="kick">The truth boundary</div>
+  <h2>Checked by the machine, or only written down</h2>
+  <div class="grid g2">
+    <div class="card"><h3>Checked</h3><p>The note is newer than the work. Each cited commit is in the repo. Each quote is word for word in its file. Shown as yes or no.</p></div>
+    <div class="card"><h3>Only written down</h3><p>Next step, status, who it's for, why it matters: someone's words, with nothing checking them. Still useful, but labelled.</p></div>
+  </div>
+  <p class="big">On the demo city: <em>22 of 26</em> checks hold, and <em>76</em> lines are someone's word.</p>
+  <p class="small">Silence is a finding too: a project with no note fails the gate instead of looking fine.</p>
+</section>
+
+<section>
   <div class="kick">Live demo</div>
   <h2>Watch it stop trusting a note</h2>
   <ul class="list">
-    <li>Click around a 20-building city: next step, proof, the gate.</li>
-    <li>Commit to the "good" project live. Ten seconds later: <em>STALE</em>.</li>
-    <li>Write a checkpoint. It passes again.</li>
-    <li>A project citing a commit that was never made, caught by asking git.</li>
-    <li>The report: every project, failing first, one question each.</li>
+    <li>A 20-building city. A good project: proof is the real test run plus its commit.</li>
+    <li>Commit to it live. Ten seconds later: <em>STALE</em>. Checkpoint it: passes again.</li>
+    <li>A proof citing a commit that was never made, caught by asking git.</li>
+    <li>A reason that misquotes its own notes, caught word for word.</li>
+    <li>The report: every project, what's checked and what's only written down.</li>
   </ul>
   <p class="small">Live app: <code>http://127.0.0.1:7777</code> &middot; offline copy on the next slide</p>
 </section>
@@ -130,7 +153,7 @@ iframe{width:100%;height:62vh;border:1px solid var(--line);border-radius:14px;ba
   <h2>A note about your work is only true the moment you write it</h2>
   <div class="grid g3">
     <div class="card"><h3>Notes go stale</h3><p>Compare when the note was written with the newest commit and session. If the work is newer, the note is labelled "written before the latest work" and the gate fails.</p></div>
-    <div class="card"><h3>Check evidence, don't trust it</h3><p>A model can write a commit hash that never existed. <code>git cat-file -e &lt;hash&gt;^{commit}</code> catches it. Cheap, deterministic, no model needed.</p></div>
+    <div class="card"><h3>Fix it where every call goes through</h3><p>A server restart broke every open tab: a new token, so every call got refused. The fix went into the one helper every call uses, not into the screen that was reported.</p></div>
     <div class="card"><h3>My tests passed for free</h3><p>The mutation script said every breakage was caught. The copy it tested couldn't find its own files, so even good code failed. New rule: the baseline must pass first.</p></div>
   </div>
 </section>
@@ -152,9 +175,19 @@ iframe{width:100%;height:62vh;border:1px solid var(--line);border-radius:14px;ba
     <li>End every session with: <em>next concrete step</em>, <em>proof it worked</em>, <em>who owns each blocker</em>. "Continue" is not a next step.</li>
     <li>Treat any status note as stale once the work is newer than the note.</li>
     <li>Verify AI-cited evidence with a deterministic check before believing it.</li>
+    <li>Keep what was checked apart from what was only claimed.</li>
     <li>Mutation-test your tests, and make sure the baseline passes first.</li>
-    <li>Keep dashboards read-only, and let the fun parts carry real data.</li>
   </ul>
+</section>
+
+<section>
+  <div class="kick">Honest limits</div>
+  <h2>Who it's for, and what it doesn't do</h2>
+  <div class="grid g3">
+    <div class="card"><h3>For</h3><p>Anyone juggling many Claude Code projects. With two projects, <code>git log</code> and a README are enough.</p></div>
+    <div class="card"><h3>Checks only what's cited</h3><p>"6/6 tests passed" is still words. The commit next to it is what gets checked.</p></div>
+    <div class="card"><h3>Needs the checkpoint</h3><p>The notes come from <code>/coc-checkpoint</code>. Skip it and the gate fails, so the gap shows instead of hiding.</p></div>
+  </div>
 </section>
 
 <section>
@@ -165,7 +198,7 @@ iframe{width:100%;height:62vh;border:1px solid var(--line);border-radius:14px;ba
     <div class="card"><h3>Python stdlib</h3><p><code>http.server</code>, parsing, gate, drift, thread pool. Zero dependencies.</p></div>
     <div class="card"><h3>Git</h3><p>State of every repo, plus verifying cited commits.</p></div>
     <div class="card"><h3>Vanilla JS, SVG, CSS</h3><p>Isometric city, procedural towers, pixel villagers, day/night. Strict CSP.</p></div>
-    <div class="card"><h3>CDP and Playwright</h3><p>53 geometry and motion checks, screenshot probes, mutation testing.</p></div>
+    <div class="card"><h3>Tests that are tested</h3><p>54 deliberate breakages, all caught. 53 city geometry checks, 36 HTTP security checks.</p></div>
   </div>
 </section>
 
@@ -176,7 +209,7 @@ iframe{width:100%;height:62vh;border:1px solid var(--line);border-radius:14px;ba
         <rect x="1" y="7" width="1" height="2"/><rect x="3" y="7" width="1" height="2"/><rect x="6" y="7" width="1" height="2"/><rect x="8" y="7" width="1" height="2"/></g>
       <g fill="#111"><rect x="3" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/></g>
     </svg>
-    <div><h1>Thank you</h1><p class="lede">Nothing I start gets lost now. Questions?</p></div>
+    <div><h1>Thank you</h1><p class="lede">Nothing I start gets lost, and I know which notes to believe. Questions?</p></div>
   </div>
 </section>
 
