@@ -1,0 +1,34 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "demo",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "demo/make_demo.py",
+        "--serve"
+      ],
+      "port": 7777
+    },
+    {
+      "name": "app",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "coc.py"
+      ],
+      "port": 7777
+    },
+    {
+      "name": "deck",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "7790",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 7790
+    }
+  ]
+}

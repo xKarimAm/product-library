@@ -186,6 +186,10 @@ MUTS = [
     ("cited field still listed as only written",
      "        if not cites:\n            written.append(label)",
      "        if True:\n            written.append(label)"),
+    # --- demo guide -------------------------------------------------------
+    ("guide passes junk steps through",
+     "[s for s in steps if isinstance(s, dict)] if isinstance(steps, list)",
+     "steps if isinstance(steps, list)"),
     ("truth dropped from the payload",
      '    out["truth"] = rec.get("truth")',
      '    out["truth"] = None'),

@@ -1,0 +1,66 @@
+[
+  {"title": "A city of projects",
+   "say": "Every building is a project started with Claude Code. Height is how much work went in. Colour is its state: clay waits on me, red is blocked on someone else, violet has a written checkpoint.",
+   "do": "Point at the legend on the right, then the front row: touched this month.",
+   "view": "city"},
+
+  {"title": "It started with one file",
+   "say": "At the end of every session, Claude writes .claude/session-state.md: the stage, the next step, the proof it worked, the blockers. Weeks later I'd open it and wonder: is this still true? That question is why this app exists.",
+   "do": "Point at NEXT ACTION and PROOF: both come straight from calculator's session-state.md.",
+   "focus": "calculator", "view": "full"},
+
+  {"title": "What good looks like",
+   "say": "Gate PASS. The proof is not a claim: it's the real test run plus a commit git can find.",
+   "do": "Read the PROOF line aloud.",
+   "focus": "calculator"},
+
+  {"title": "Break it live",
+   "say": "I'll change the code and leave the note alone. Watch this building.",
+   "do": "Second terminal, in the repo folder: py demo/make_demo.py --commit calculator . Wait 10 seconds, press F5.",
+   "focus": "calculator"},
+
+  {"title": "It noticed",
+   "say": "STALE: dashed roof, gate FAIL. The note was written before the latest work, so the app stops trusting it.",
+   "do": "Then: py demo/make_demo.py --checkpoint calculator , press F5. It passes again, and the proof cites the new commit.",
+   "focus": "calculator"},
+
+  {"title": "Stale on its own",
+   "say": "Nobody touched this on stage. A commit landed hours after its note, so its next step may already be done.",
+   "do": "Point at the STALE pill and 'written before the latest work'.",
+   "focus": "habit-tracker"},
+
+  {"title": "A commit that never existed",
+   "say": "It says shipped, tests pass, commit 4f9e2a1. The app asked git: that commit was never made. No model needed to catch it.",
+   "do": "Read the gate question aloud.",
+   "focus": "pomodoro-timer"},
+
+  {"title": "A quote that doesn't match",
+   "say": "Its reason quotes NOTES.md: 'two hours a day'. The file actually says a week. Quotes are checked word for word.",
+   "do": "Point at WHY and the gate question.",
+   "focus": "invoice-parser"},
+
+  {"title": "'Continue' is not a next step",
+   "say": "The gate doesn't just fail. It asks the one question to answer next. Here: the next step is filler, and a blocker has no owner.",
+   "do": "Point at the gate block.",
+   "focus": "url-shortener"},
+
+  {"title": "Waiting on me",
+   "say": "A blocker with my name on it becomes 'waiting on you' in the header. That's the list I check every morning.",
+   "do": "Point at the clay '2 waiting on you' pill at the top.",
+   "focus": "chatbot-frontend"},
+
+  {"title": "The story, told by Claude",
+   "say": "How it started, where it is now, and every session as a chapter that Claude titled itself. Nothing here was typed by hand.",
+   "do": "Scroll to HOW IT STARTED and the chapter list.",
+   "focus": "calculator", "view": "full"},
+
+  {"title": "Checked, or only written down",
+   "say": "Every project, failing first. Under each one: what the machine checked, yes or no, and what is only someone's word.",
+   "do": "Point at '22/26 checks hold', then scroll to pomodoro-timer and invoice-parser: each has one 'no'.",
+   "view": "report"},
+
+  {"title": "Take it home",
+   "say": "End every session with a next step, proof it worked, and who owns each blocker. Then check the note against the work before you trust it.",
+   "do": "Press T to hide this guide for questions.",
+   "view": "city"}
+]

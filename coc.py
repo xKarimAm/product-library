@@ -39,6 +39,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REGISTRY = os.environ.get("COC_REGISTRY") or os.path.join(os.path.expanduser("~"), ".claude", "projects")
 # Overridable like REGISTRY, so a demo never shows the real ~/.claude/plans.
 PLANS_DIR = os.environ.get("COC_PLANS_DIR") or os.path.join(os.path.expanduser("~"), ".claude", "plans")
+# The live demo's on-screen guide: a JSON list of steps. Unset in real use, so
+# nothing shows; demo/make_demo.py points it at demo/tour.json.
+TOUR = os.environ.get("COC_TOUR") or ""
 
 # Folders the registry cannot know about, because a registry entry only exists
 # once Claude has actually been run there. Empty by default: machine-specific
@@ -1085,6 +1088,18 @@ def plans():
     return out
 
 
+def tour():
+    """The demo guide's steps, or [] when there is no guide: unset, missing,
+    not JSON, or not a list. A broken guide must never break the dashboard."""
+    if not os.path.isfile(TOUR):               # unset is "", never a file
+        return []
+    try:
+        steps = json.loads(read_text(TOUR) or "[]")
+    except ValueError:
+        return []
+    return [s for s in steps if isinstance(s, dict)] if isinstance(steps, list) else []
+
+
 # ---------------------------------------------------------------------- server
 
 # Two separate secrets. TOKEN authorises the launch; the CSP nonce is minted
@@ -1218,6 +1233,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 for r in scan() if r["waiting"] or r["blockers"]])
         if path == "/api/plans":
             return self._json(plans())
+        if path == "/api/tour":
+            return self._json(tour())
         if path.startswith("/api/"):
             return self._json({"error": "unknown endpoint"}, 404)
 
@@ -1525,6 +1542,7 @@ def selftest():
     selftest_gate()
     selftest_checkpoint()
     selftest_truth()
+    selftest_tour()
     selftest_story()
     print("selftest OK")
 
@@ -2052,6 +2070,27 @@ def selftest_truth():
     rec = _build(root, "truth", "extra")
     assert rec["truth"]["written"] == ["next action", "proof"], rec["truth"]
     assert light(rec)["truth"] == rec["truth"]
+    shutil.rmtree(root, ignore_errors=True)
+
+
+def selftest_tour():
+    """The demo guide is off unless pointed at a real list of steps."""
+    import tempfile
+    global TOUR
+    saved, root = TOUR, tempfile.mkdtemp(prefix="coc-tour-")
+    fp = os.path.join(root, "tour.json")
+    TOUR = ""
+    assert tour() == []
+    TOUR = fp                                  # set, but the file is missing
+    assert tour() == []
+    cases = (('[{"title": "a"}, "junk", {"title": "b"}]', [{"title": "a"}, {"title": "b"}]),
+             ("{not json", []), ('{"title": "a"}', []))
+    for body, want in cases:
+        with open(fp, "w", encoding="utf-8") as fh:
+            fh.write(body)
+        _cache.clear()
+        assert tour() == want, (body, tour())
+    TOUR = saved
     shutil.rmtree(root, ignore_errors=True)
 
 

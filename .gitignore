@@ -7,6 +7,7 @@ tools/*.png
 *.png
 __pycache__/
 *.bak
-.claude/
+.claude/*
+!.claude/launch.json
 .remember/
 !docs/city-night.png

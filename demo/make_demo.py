@@ -494,7 +494,8 @@ def env():
     # Demo projects only, and a grace short enough that a live commit flips a
     # project to STALE while the audience watches.
     return dict(os.environ, COC_REGISTRY=os.path.join(OUT, "registry"), COC_EXTRA_ROOTS="",
-                COC_PLANS_DIR=os.path.join(OUT, "plans"), COC_DRIFT_GRACE=str(GRACE))
+                COC_PLANS_DIR=os.path.join(OUT, "plans"), COC_DRIFT_GRACE=str(GRACE),
+                COC_TOUR=os.path.join(HERE, "tour.json"))   # the on-screen presenter guide
 
 
 def scenario(name):

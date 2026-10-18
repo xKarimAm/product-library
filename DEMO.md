@@ -34,6 +34,14 @@ correct behaviour, and the wrong look for a stage.
 **Time of day:** the sky follows the real clock (night lights every window, searchlights sweep).
 To force it, open `http://127.0.0.1:7777/?hour=22` for night or `?hour=12` for day.
 
+## The on-screen guide
+
+`--serve` shows a guide panel at the top left: 13 steps, each with what to say and what to do
+(including the two live commands). **PgDn** next, **PgUp** back (a presentation clicker sends these),
+**T** hides it for questions. It moves the app for you: opens the right building, the full view, the
+report. It survives F5, and a new tab starts again at step 1. Edit the steps in `demo/tour.json`.
+Real use never shows it: only the demo sets `COC_TOUR`.
+
 ## The city at a glance
 
 How far along a project is reads as its building: **dirt lot** (registry entry, nothing on disk),

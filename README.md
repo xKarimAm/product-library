@@ -67,6 +67,7 @@ command on your PATH there. Issues and fixes are welcome.
 ## Docs
 
 - **[DEMO.md](DEMO.md):** presenting the demo city, with a talk track.
+- **[TALK.md](TALK.md):** the 10-minute talk: deck, live demo with the on-screen guide, likely questions.
 - **`docs/presentation.html`:** the short talk (what it is, why, lessons, tech). Arrow keys move slides.
 - **`docs/lessons-learned.html`:** the deep dive: every technology choice and 33 lessons learned.
 - **[SECURITY.md](SECURITY.md):** report vulnerabilities privately. **[LICENSE](LICENSE):** MIT.

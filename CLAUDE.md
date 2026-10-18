@@ -3,6 +3,24 @@
 The UI and docs say **Product Library**. Code keeps the old name on purpose: `coc.py`, `COC_*` env vars,
 the `X-COC-Token` header and the `coc-checkpoint` skill. Don't rename those.
 
+## Run the live demo (a fresh clone on the presenting laptop)
+
+When asked to "run the demo", do exactly this from the repo root. Needs only Python 3 and git:
+no installs. (macOS/Linux: `python3` instead of `py`.)
+
+1. `py demo/make_demo.py --rehearse` must end with `rehearsal OK`. It builds `../coc-demo` (next to
+   the clone) and runs the live moment end to end. If it fails, the message names the product.
+2. Start the server with the `demo` entry in `.claude/launch.json` (or `py demo/make_demo.py --serve`)
+   and open `http://127.0.0.1:7777` in a new tab. The on-screen guide starts at step 1.
+3. Tell the user: Windows Settings > Accessibility > Visual effects > Animation effects ON, and keep a
+   second terminal in the repo root for `py demo/make_demo.py --commit calculator` and
+   `--checkpoint calculator`.
+4. The deck: the `deck` entry serves the repo on port 7790; open `http://127.0.0.1:7790/docs/presentation.html`.
+
+Presenter material: `TALK.md` (what to say, timings, likely questions), `docs/presentation.html`
+(6 slides), `demo/tour.json` (the guide's 13 steps), `DEMO.md` (the demo city in detail, troubleshooting).
+A server or terminal inside `../coc-demo` blocks the rebuild: stop it before `--rehearse`.
+
 Local, read-only mission control over every folder Claude Code has run in. Two files do everything:
 
 - `coc.py` is the backend: an HTTP server, scanner and parsers. Python stdlib only, so nothing to install.
@@ -59,6 +77,7 @@ Every `/api/*` call needs the header `X-COC-Token`. The token is injected into t
 | `GET /api/project/<id>` | full `_build` record |
 | `GET /api/blocked` | `{id, name, waiting, blockers}` for projects with blockers |
 | `GET /api/plans` | `plans()` |
+| `GET /api/tour` | `tour()`: the live demo's presenter steps from the file in env `COC_TOUR` (`demo/tour.json`); `[]` in real use, so no guide shows |
 | `POST /api/open` body `{id, token}` | opens VS Code on that project. The id is looked up in the scan; a path is never accepted |
 | `GET /`, `/blocked`, `/plans`, `/report`, `/p/<id>` | the `index.html` shell, with a CSP nonce and the token injected (`CLIENT_ROUTES`) |
 
@@ -99,6 +118,7 @@ JS banners, with what lives in each:
 | sheets | `projectSheet` (full view `/p/<id>`: stale detail, full gate gap list, stage, proof), `blockedSheet`, `plansSheet`, `reportSheet` (`/report`: every project by gate verdict plus its truth boundary, checked vs only written down, built from `PROJECTS`, no extra API) | |
 | city: day/night, avenues and traffic, RCI meter, roster panel | `applySky` (palette from the real clock; `?hour=` forces it), `drawRoads`, `spawnVehicles`, `buildMeter`, `buildRoster` (project rail plus the swatch legend) | the SimCity layer. CSS banners `city: ...` hold its styles, including `city: shine` (window flicker, stars, searchlights, blimp; all off under reduced motion) |
 | routing / filter / data / bindings | `go`, `render`, `applyFilter`, `load` | client routes, search box (`#search`), data fetch |
+| demo guide | `tourStart`, `tourGo` | the `#tour` panel: one step per `demo/tour.json` entry (`title say do focus view`), PgUp/PgDn, T hides; the step survives F5 via sessionStorage |
 
 CSP note: inline `style="..."` attributes are blocked. Set dynamic styles via `el.style.setProperty`.
 ## Other files
