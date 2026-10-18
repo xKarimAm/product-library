@@ -3163,8 +3163,10 @@ async function load() {
       layout();
     });
   }
-  render();
-  if (first) tourStart();
+  // Only the first load routes. A poll re-render closed and reopened whatever
+  // sheet was up every 30s: the full view visibly stuttered mid-demo. An open
+  // sheet refreshes on its next navigation or F5 instead.
+  if (first) { render(); tourStart(); }
 }
 
 /* ---------------------------------------------------------------- bindings */
