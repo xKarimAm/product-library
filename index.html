@@ -479,6 +479,13 @@ header{
 #bubble .why{margin:0;font-size:12.6px;line-height:1.5;color:var(--ink-soft)}
 
 /* -------------------------------------------------------------- full sheet */
+/* Claude's chapters: one line per session, numbered, date on the right. */
+#sheet ol.chapters{margin:0;padding-left:1.6em}
+#sheet ol.chapters li{padding:4px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+/* flex on an inner div: a flex <li> loses its list marker, i.e. the number. */
+#sheet ol.chapters .ch{display:flex;justify-content:space-between;gap:12px}
+#sheet ol.chapters li::marker{color:var(--clay);font-weight:700}
+#sheet ol.chapters .when{opacity:.6;font-size:.85em;white-space:nowrap}
 #sheet{
   position:absolute;top:0;right:0;bottom:0;width:min(640px,94vw);z-index:50;
   background:linear-gradient(180deg,#FFFDF8,var(--cream) 12%,#EFEBE0);
@@ -2332,6 +2339,18 @@ function openBubble(id) {
   const proof = p.proof
     ? `<div class="gate"><div class="lead">PROOF</div><p class="why">${esc(p.proof)}</p></div>`
     : "";
+  // The story, straight from the transcripts: the first real prompt (why it
+  // exists), Claude's own title for the latest session, and what shipped.
+  const story = p.origin_prompt || p.latest_chapter || p.pr_count
+    ? `<div class="gate">`
+      + (p.origin_prompt ? `<div class="lead">STARTED AS &middot; ${esc((p.origin_at || "").slice(0, 10))}</div>`
+        + `<p class="why mono">${esc(p.origin_prompt)}</p>` : "")
+      + (p.latest_chapter ? `<div class="lead">CHAPTER ${p.chapter_count} &middot; CLAUDE'S TITLE</div>`
+        + `<p class="why">${esc(p.latest_chapter)}</p>` : "")
+      + (p.pr_count ? `<p class="why"><b>${p.pr_count}</b> ${p.pr_count > 1 ? "pull requests" : "pull request"} shipped</p>` : "")
+      + `</div>`
+    : "";
+
   // The catalog card: who it is for and why it mattered, so a building found
   // months later explains itself.
   const card = p.for || p.bet
@@ -2357,7 +2376,7 @@ function openBubble(id) {
   acts.push('<button type="button" class="ghost" data-act="full">Full view</button>');
 
   b.innerHTML = `<h2>${esc(p.name)}${badge}</h2><div class="line">${bits.join(" &middot; ")}</div>`
-    + body + card + proof + gate + sources + flags + `<div class="acts">${acts.join("")}</div>`;
+    + body + card + story + proof + gate + sources + flags + `<div class="acts">${acts.join("")}</div>`;
 
   // Source-row swatches carry the module colour, set through CSSOM because a
   // style attribute would be blocked by the nonce policy.
@@ -2476,6 +2495,24 @@ async function projectSheet(id) {
     const own = new Set(p.waiting || []);
     out.push(sec("BLOCKERS", '<ul class="flags">' + p.blockers.map((b) =>
       `<li class="${own.has(b) ? "" : "other"}">${esc(b)}</li>`).join("") + "</ul>"));
+  }
+  // How it started vs where it is now, then Claude's chapters and what shipped.
+  if (p.origin) {
+    const now = (p.prompts || []).slice(-1)[0];
+    out.push(sec("HOW IT STARTED &rarr; WHERE IT IS NOW",
+      `<div class="card body"><b>${esc((p.origin.at || "").slice(0, 10))}</b> ${esc(p.origin.prompt)}</div>`
+      + (now && now !== p.origin.prompt ? `<div class="card body"><b>latest</b> ${esc(now)}</div>` : "")));
+  }
+  if ((p.chapters || []).length) {
+    out.push(sec(`CHAPTERS &middot; Claude's title for each session (${p.chapters.length})`,
+      '<ol class="chapters">' + p.chapters.map((c) =>
+        `<li><div class="ch"><span>${esc(c.title)}</span><span class="when">${esc((c.at || "").slice(0, 10))}</span></div></li>`).join("") + "</ol>"));
+  }
+  if ((p.prs || []).length) {
+    // URLs are https-only by the time they get here (_story_in drops the rest).
+    out.push(sec(`SHIPPED &middot; pull requests (${p.prs.length})`, p.prs.map((r) =>
+      `<div class="row"><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">#${esc(String(r.number || ""))} ${esc(r.repo || "")}</a>`
+      + `<span>${esc((r.at || "").slice(0, 10))}</span></div>`).join("")));
   }
   if (g.branch) {
     out.push(sec("GIT", `<div class="row"><b>${esc(g.branch)}</b><span>`

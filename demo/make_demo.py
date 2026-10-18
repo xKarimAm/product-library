@@ -216,6 +216,7 @@ _inv["expect"]["gaps"] = ["proof_quote"]
 #   claude:  the project's CLAUDE.md
 #   sessions: extra (age_h, [prompts]) on top of the scenario's own
 #   branch:  work happens on this branch instead of main
+#   prs:     (age_h, number) pull requests, linked from the nearest session
 DEPTH = {
     "calculator": {
         "history": [(24, "Tokenizer: numbers, operators and whitespace"),
@@ -234,6 +235,7 @@ DEPTH = {
                   "- Tests run with `py -m unittest`; keep them under a second.\n",
         "claude": "# Calculator\n\nRecursive-descent calculator, standard library only. No eval().\n"
                   "Run tests with `py -m unittest` before every commit.\n",
+        "prs": [(20, 1), (12, 2), (4, 3)],
         "sessions": [(16, ["why does 2-3-4 give 3", "fix associativity for minus"]),
                      (11, ["add a caret under the bad character in error messages"]),
                      (7, ["split the parser into tokenize() and parse()"])],
@@ -252,6 +254,7 @@ DEPTH = {
                   "- Provider choice is open: OpenRouter (many models) or Anthropic API (one key).\n",
         "claude": "# Chatbot front end\n\nSingle-file chat UI. Open index.html in a browser; nothing to install.\n",
         "sessions": [(20, ["make canned replies rotate"]), (12, ["add a dark theme for projectors"])],
+        "prs": [(13, 1)],
     },
     "habit-tracker": {
         "history": [(46, "Check-in command and JSON store"),
@@ -266,6 +269,7 @@ DEPTH = {
                   "- Store is habits.json next to the script, git-ignored.\n",
         "claude": "# Habit tracker\n\nCLI habit tracker with streaks. `py habits.py --help`.\n",
         "sessions": [(36, ["why did my streak reset last night"]), (22, ["add a weekly summary"])],
+        "prs": [(30, 1), (21, 2)],
         "branch": "streak-edge-cases",
     },
     "pomodoro-timer": {
@@ -275,6 +279,7 @@ DEPTH = {
         "claude": "# Pomodoro timer\n\nTerminal timer. `py pomodoro.py 4` runs four rounds.\n",
     },
     "kanban-board": {
+        "prs": [(150, 1), (60, 2), (3, 3)],
         "handoff": [(200, "Board skeleton", ["three columns, cards are plain text"]),
                     (80, "Drag and drop", ["native HTML drag events, no library"]),
                     (2.1, "Persistence", ["cards persist; column ORDER does not yet", "next: save column order"])],
@@ -375,17 +380,33 @@ def write_state(path, age_h, st):
     stamp(fp, age_h)
 
 
-def write_sessions(path, sessions, branch="main"):
+def session_title(prompt):
+    """What Claude Code's ai-title looks like: the gist, sentence case, short."""
+    t = prompt.strip().rstrip(".?!")
+    t = t[0].upper() + t[1:]
+    return t if len(t) <= 60 else t[:57].rsplit(" ", 1)[0] + "..."
+
+
+def write_sessions(path, sessions, branch="main", prs=()):
     slug = re.sub(r"[^A-Za-z0-9]", "-", path)
     reg = os.path.join(OUT, "registry", slug)
     os.makedirs(reg)
-    for age_h, prompts in sessions:
+    # Each PR is linked from the session closest to it in time.
+    owner = {n: min(range(len(sessions)), key=lambda i: abs(sessions[i][0] - a)) for a, n in prs}
+    for i, (age_h, prompts) in enumerate(sessions):
         sid = str(uuid.uuid4())
         rec = [{"type": "queue-operation", "sessionId": sid},
                {"type": "attachment", "cwd": path, "gitBranch": branch, "sessionId": sid}]
         for p in prompts:
             rec += [{"type": "user", "message": {"role": "user", "content": p}, "sessionId": sid},
                     {"type": "last-prompt", "lastPrompt": p, "sessionId": sid}]
+        rec.append({"type": "ai-title", "aiTitle": session_title(prompts[0]), "sessionId": sid})
+        name = os.path.basename(path)
+        for a, n in prs:
+            if owner[n] == i:
+                rec.append({"type": "pr-link", "prNumber": n, "prRepository": "example-org/" + name,
+                            "prUrl": "https://github.com/example-org/%s/pull/%d" % (name, n),
+                            "timestamp": iso(a), "sessionId": sid})
         fp = os.path.join(reg, sid + ".jsonl")
         with open(fp, "w", encoding="utf-8") as fh:
             fh.write("".join(json.dumps(r) + "\n" for r in rec))
@@ -444,7 +465,8 @@ def build(p):
         rel, text = p["dirty"]
         with open(os.path.join(path, rel), "a", encoding="utf-8") as fh:
             fh.write(text)
-    reg = write_sessions(path, p["sessions"] + d.get("sessions", []), d.get("branch", "main"))
+    reg = write_sessions(path, p["sessions"] + d.get("sessions", []), d.get("branch", "main"),
+                         d.get("prs", ()))
     if d.get("memory"):                      # Claude's own per-project notes, as the registry keeps them
         os.makedirs(os.path.join(reg, "memory"))
         with open(os.path.join(reg, "memory", "MEMORY.md"), "w", encoding="utf-8") as fh:
@@ -552,8 +574,15 @@ def check():
                 for k, v in p["expect"].items() if seen[k] != v]
     if bad:
         sys.exit("DEMO CHECK FAILED\n  " + "\n  ".join(bad))
+    for p in PROJECTS:                       # every building has a story: origin, a chapter per session
+        r = got[p["name"]]
+        if not r["origin"] or len(r["chapters"]) != r["sessions"]:
+            bad.append("%s: origin %r, %d chapters for %d sessions"
+                       % (p["name"], (r["origin"] or {}).get("prompt"), len(r["chapters"]), r["sessions"]))
     for name, d in DEPTH.items():            # the story layer landed where the UI reads it
         r = got[name]
+        if len(r["prs"]) != len(d.get("prs", ())):
+            bad.append("%s: %d PRs, want %d" % (name, len(r["prs"]), len(d.get("prs", ()))))
         if d.get("handoff") and not any(l["name"] == "HANDOFF.md" and l["heading"] for l in r["logs"]):
             bad.append(name + ": HANDOFF.md log missing")
         if d.get("memory") and not r["memory"]:

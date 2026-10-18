@@ -265,6 +265,69 @@ def last_prompts(slug_dir):
     return [], None, False
 
 
+def _story_in(jsonl_path):
+    """One session's title, prompts and PR links, from Claude Code's own records.
+
+    `ai-title` is the title Claude gives a session, `custom-title` the one the
+    user typed (it wins), and both are rewritten as a session goes, so the LAST
+    record is current. A `pr-link` whose URL is not https is dropped here, so
+    nothing else ever has to wonder whether it is safe to render as a link.
+
+    ponytail: a full read per transcript, cached per (path, mtime, size). The
+    session being worked on changes every poll and is re-read each time; an
+    index of byte offsets would fix that if a multi-MB live transcript ever
+    makes a poll slow.
+    """
+    key = _stat_key("story", jsonl_path)
+    if key and key in _cache:
+        return _cache[key]
+    out = {"ai": None, "custom": None, "prompts": [], "prs": []}
+    try:
+        text = read_text(jsonl_path)
+    except OSError:
+        return out
+    for rec in _jsonl_lines(text):
+        kind = rec.get("type")
+        if kind == "ai-title" and rec.get("aiTitle"):
+            out["ai"] = rec["aiTitle"]
+        elif kind == "custom-title" and rec.get("customTitle"):
+            out["custom"] = rec["customTitle"]
+        elif kind == "last-prompt" and rec.get("lastPrompt"):
+            out["prompts"].append(rec["lastPrompt"])
+        elif kind == "pr-link" and str(rec.get("prUrl") or "").startswith("https://"):
+            out["prs"].append({"number": rec.get("prNumber"), "repo": rec.get("prRepository"),
+                               "url": rec["prUrl"], "at": rec.get("timestamp")})
+    if key:
+        _cache[key] = out
+    return out
+
+
+def project_story(tx):
+    """(origin, chapters, prs) across a project's transcripts, oldest first.
+
+    origin is the first SUBSTANTIVE prompt of the oldest session that has one:
+    the reason the project exists, next to the latest prompt the bubble already
+    shows. chapters is Claude's own title for each session. prs is what shipped.
+    """
+    origin, chapters, prs, seen = None, [], [], set()
+    for mtime, _size, path in reversed(tx):          # tx is newest first
+        s = _story_in(path)
+        if origin is None:
+            first = next((p for p in s["prompts"] if is_substantive(p)), None)
+            if first:
+                origin = {"prompt": first, "at": _iso(mtime)}
+        title = s["custom"] or s["ai"]
+        if title:
+            chapters.append({"title": title, "at": _iso(mtime),
+                             "session_id": os.path.splitext(os.path.basename(path))[0]})
+        for pr in s["prs"]:
+            if pr["url"] not in seen:
+                seen.add(pr["url"])
+                prs.append(pr)
+    prs.sort(key=lambda p: p["at"] or "")
+    return origin, chapters, prs
+
+
 # ------------------------------------------------------------ project folder
 
 # stage and proof are written by skills/coc-checkpoint; the rest predate it.
@@ -745,6 +808,9 @@ def _build(path, slug, source, slug_dir=None, branch_hint=None):
         "git": None,
         "note": None,
         "drift": None,
+        "origin": None,
+        "chapters": [],
+        "prs": [],
         "proof_unknown": [],
         "proof_unquoted": [],
         "gate": None,
@@ -762,6 +828,7 @@ def _build(path, slug, source, slug_dir=None, branch_hint=None):
         rec["prompts"] = prompts
         rec["prompt_trivial"] = trivial
         rec["session_id"] = session_id
+        rec["origin"], rec["chapters"], rec["prs"] = project_story(tx)
         mem = os.path.join(slug_dir, "memory", "MEMORY.md")
         if os.path.isfile(mem):
             rec["memory"] = read_text(mem, 20000)
@@ -924,6 +991,13 @@ def light(rec):
     stage = (st.get("stage") or "").strip()
     out["stage"] = stage if stage and len(stage) <= 24 and "\n" not in stage else None
     out["proof"] = st.get("proof")
+    # How it started, next to the latest prompt (`prompts`); Claude's chapters
+    # and shipped PRs travel as counts here, in full on /api/project/<id>.
+    out["origin_prompt"] = (rec.get("origin") or {}).get("prompt")
+    out["origin_at"] = (rec.get("origin") or {}).get("at")
+    out["chapter_count"] = len(rec.get("chapters") or [])
+    out["latest_chapter"] = (rec.get("chapters") or [{}])[-1].get("title")
+    out["pr_count"] = len(rec.get("prs") or [])
     out["for"] = st.get("for")
     out["bet"] = st.get("bet")
     out["has_state"] = bool(rec.get("state"))
@@ -1402,6 +1476,7 @@ def selftest():
     selftest_regressions()
     selftest_gate()
     selftest_checkpoint()
+    selftest_story()
     print("selftest OK")
 
 
@@ -1878,6 +1953,92 @@ def selftest_checkpoint():
         return scan(force=True)[0]["gate"]
     assert scan_quoted("docs/interviews.md: 'my prototypes every single month'")["gaps"] == []
     assert [x["id"] for x in scan_quoted("docs/interviews.md: 'my prototypes every day'")["gaps"]] == ["proof_quote"]
+
+    shutil.rmtree(root, ignore_errors=True)
+
+
+def selftest_story():
+    """How it started, Claude's chapters, what shipped - all read straight from
+    the transcripts, no model. Each case is a trap a naive reader falls into."""
+    import tempfile
+    global REGISTRY, EXTRA_ROOTS
+
+    def rec(**kw):
+        return json.dumps(kw, ensure_ascii=False) + "\n"
+
+    T = 1_700_000_000.0
+    root = tempfile.mkdtemp(prefix="coc-story-")
+    proj = os.path.join(root, "Habits")
+    os.makedirs(proj)
+    slug = os.path.join(root, "reg", "D--Habits")
+    os.makedirs(slug)
+
+    def session(name, age, *records):
+        fp = os.path.join(slug, name + ".jsonl")
+        with open(fp, "w", encoding="utf-8") as fh:
+            fh.write(rec(type="attachment", cwd=proj, sessionId=name))
+            fh.write("".join(records))
+            fh.write("q" * 300 + "\n")          # past MIN_JSONL_BYTES
+        os.utime(fp, (T + age, T + age))
+        return fp
+
+    # Oldest session: filler first, then the real ask. Claude titled it, then
+    # the user renamed it - the user's own title wins.
+    session("s1", 0,
+            rec(type="last-prompt", lastPrompt="continue"),
+            rec(type="last-prompt", lastPrompt="build a habit tracker cli with streaks"),
+            rec(type="ai-title", aiTitle="Build habit tracker CLI"),
+            rec(type="custom-title", customTitle="Habit tracker v0"))
+    # Middle: Claude retitled the session as it went - the LAST title is current.
+    # The same PR is linked twice; it shipped once.
+    pr3 = "https://github.com/example/habits/pull/3"
+    session("s2", 3600,
+            rec(type="last-prompt", lastPrompt="why did my streak reset at midnight"),
+            rec(type="ai-title", aiTitle="Investigate streak"),
+            rec(type="ai-title", aiTitle="Fix streak reset at midnight"),
+            rec(type="pr-link", prNumber=3, prRepository="example/habits", prUrl=pr3,
+                timestamp="2023-11-14T23:30:00Z"),
+            rec(type="pr-link", prNumber=3, prRepository="example/habits", prUrl=pr3,
+                timestamp="2023-11-14T23:31:00Z"))
+    # Newest: no title. A PR link that is not https is never shown.
+    session("s3", 7200,
+            rec(type="last-prompt", lastPrompt="add a weekly summary view"),
+            rec(type="pr-link", prNumber=9, prRepository="x/y", prUrl="javascript:alert(1)",
+                timestamp="2023-11-15T00:00:00Z"),
+            rec(type="pr-link", prNumber=4, prRepository="example/habits",
+                prUrl="https://github.com/example/habits/pull/4", timestamp="2023-11-15T00:10:00Z"))
+
+    REGISTRY, EXTRA_ROOTS = os.path.join(root, "reg"), []
+    _cache.clear()
+    _scan_cache.update(at=0.0, data=None)
+    got = scan(force=True)[0]
+
+    # How it started: the first REAL prompt of the OLDEST session, not filler,
+    # and not the newest session (which is what "last prompt" already shows).
+    assert got["origin"] == {"prompt": "build a habit tracker cli with streaks",
+                             "at": _iso(T)}, got["origin"]
+    assert got["prompts"][-1] == "add a weekly summary view", got["prompts"]
+    # Claude's chapters, oldest first; untitled sessions are skipped.
+    assert [c["title"] for c in got["chapters"]] == ["Habit tracker v0", "Fix streak reset at midnight"], got["chapters"]
+    assert got["chapters"][1]["at"] == _iso(T + 3600), got["chapters"]
+    # What shipped: de-duplicated, https only, oldest first.
+    assert [p["number"] for p in got["prs"]] == [3, 4], got["prs"]
+    assert all(p["url"].startswith("https://") for p in got["prs"]), got["prs"]
+    lt = light(got)
+    assert lt["origin_prompt"] == "build a habit tracker cli with streaks", lt
+    assert lt["chapter_count"] == 2 and lt["latest_chapter"] == "Fix streak reset at midnight", lt
+    assert lt["pr_count"] == 2, lt
+
+    # A project whose sessions never said anything substantive has no origin,
+    # rather than a "continue" presented as the reason it exists.
+    shutil.rmtree(slug)
+    os.makedirs(slug)
+    session("only", 0, rec(type="last-prompt", lastPrompt="ok"))
+    _cache.clear()
+    _scan_cache.update(at=0.0, data=None)
+    bare = scan(force=True)[0]
+    assert bare["origin"] is None and bare["chapters"] == [] and bare["prs"] == [], bare
+    assert light(bare)["origin_prompt"] is None and light(bare)["pr_count"] == 0
 
     shutil.rmtree(root, ignore_errors=True)
 
