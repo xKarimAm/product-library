@@ -173,6 +173,22 @@ MUTS = [
     ("missing commit not reported",
      "            missing.append(h)",
      "            pass"),
+    # --- truth boundary ---------------------------------------------------
+    ("commit counted checked with no repo to ask",
+     "for h in PROOF_COMMIT_RE.findall(val) if has_repo or h in unknown]",
+     "for h in PROOF_COMMIT_RE.findall(val)]"),
+    ("stale state counted as fresh",
+     '"ok": not rec.get("drift")}]',
+     '"ok": True}]'),
+    ("misquote counted as true",
+     '"ok": rel not in unquoted}',
+     '"ok": True}'),
+    ("cited field still listed as only written",
+     "        if not cites:\n            written.append(label)",
+     "        if True:\n            written.append(label)"),
+    ("truth dropped from the payload",
+     '    out["truth"] = rec.get("truth")',
+     '    out["truth"] = None'),
 ]
 
 tmp = tempfile.mkdtemp()

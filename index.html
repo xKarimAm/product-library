@@ -836,9 +836,18 @@ header{
 // it cannot have come from another origin. Distinct from the CSP nonce, which
 // is minted fresh per response.
 const TOKEN = "{{TOKEN}}";
+// A restarted server mints a new token, so an open tab calls with a dead one and
+// gets 403 forever: the poll, and every sheet (Full view said "Unknown project").
+// Reload once to pick up the new token, and never settle, so no caller renders
+// the error meanwhile. Only after a first render, so a page that never had a
+// good token cannot reload-loop. The reload keeps the path: /p/<id> reopens.
 const api = (path, init) => fetch(path, Object.assign({}, init, {
   headers: Object.assign({ "X-COC-Token": TOKEN }, (init || {}).headers || {}),
-}));
+})).then((res) => {
+  if (res.status !== 403 || !entered) return res;
+  location.reload();
+  return new Promise(() => {});
+});
 
 const SVGNS = "http://www.w3.org/2000/svg";
 const DAY = 86400000;
@@ -2562,9 +2571,20 @@ function reportSheet() {
   const n = (f) => PROJECTS.filter(f).length;
   const verdict = (p) => p.gate === "fail" ? '<b class="fail">FAIL</b>'
     : p.gate === "pass" ? "PASS" : "no verdict";
+  // The truth boundary: what this scan verified vs what is only someone's words.
+  const checks = PROJECTS.flatMap((p) => p.truth ? p.truth.checked : []);
+  const written = PROJECTS.reduce((s, p) => s + (p.truth ? p.truth.written.length : 0), 0);
+  const truthOf = (t) => !t ? "" : `<p class="prose"><b>Checked:</b> `
+    + t.checked.map((c) => `${esc(c.what)}: ${c.ok ? "yes" : '<b class="fail">no</b>'}`).join(" &middot; ")
+    + `</p><p class="prose"><b>Only written down:</b> ${t.written.length ? esc(t.written.join(", ")) : "nothing"}</p>`;
   sheet("Report", `<div class="stats">${stat(n((p) => p.gate === "pass"), "pass")}`
     + `${stat(n((p) => p.gate === "fail"), "fail")}${stat(n((p) => p.drift), "stale")}`
-    + `${stat(n((p) => p.has_state), "with state")}</div>`
+    + `${stat(n((p) => p.has_state), "with state")}`
+    + `${stat(checks.filter((c) => c.ok).length + "/" + checks.length, "checks hold")}`
+    + `${stat(written, "only written")}</div>`
+    + '<p class="prose"><b>Checked</b> means this scan verified it: the state is newer than the work, '
+    + "a cited commit is in the repo, a quote is word for word in its file. <b>Only written down</b> "
+    + "is a filled-in line nothing checked. A checked line's other words are still only written.</p>"
     + rows.map((p) => `<section class="rep"><h3>${esc(p.name)}</h3>`
       // One left-hand element: .row is space-between flex, so loose text and
       // the <b> would each become a flex item and spread across the row.
@@ -2573,6 +2593,7 @@ function reportSheet() {
       + `</div><span>${esc(ago(p.last_activity))}</span></div>`
       + (p.bet ? `<p class="prose"><b>Why:</b> ${esc(p.bet)}</p>` : "")
       + (p.gate_next ? `<p class="prose">${esc(p.gate_next)}</p>` : "")
+      + truthOf(p.truth)
       + `<div class="acts"><button type="button" class="ghost" data-act="goto" data-id="${esc(p.id)}">`
       + `Open ${esc(p.name)}</button></div></section>`).join(""));
 }
@@ -3076,10 +3097,7 @@ async function load() {
   let res, data;
   try { res = await api("/api/projects"); data = await res.json(); }
   catch (e) { toast("Product Library could not read the registry", true); return; }
-  // A restarted server mints a new token, so an open tab polls with a dead one
-  // and gets 403 forever. Reload once to pick up the new token - only after a
-  // first render, so a page that never had a good token cannot reload-loop.
-  if (res.status === 403 && entered) { location.reload(); return; }
+  // A dead token after a server restart is handled in api(): it reloads.
   if (!Array.isArray(data)) { toast("Product Library could not read the registry", true); return; }
   PROJECTS = data;
 

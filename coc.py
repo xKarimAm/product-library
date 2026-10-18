@@ -611,6 +611,50 @@ def gate(rec):
             "next": gaps[0]["question"] if gaps else None}
 
 
+# The state fields a person (or Claude) types, in the order the report lists them.
+TRUTH_FIELDS = (("next_action", "next action"), ("status", "status"), ("stage", "stage"),
+                ("current_task", "current task"), ("for", "who it's for"),
+                ("bet", "why it matters"), ("proof", "proof"))
+
+
+def truth(rec):
+    """The truth boundary: what the machine checked vs what is only written down.
+
+    `checked` holds every claim the scan verified, true or false: the state was
+    rewritten after the latest work, each cited commit is in the repo, each
+    quote is word for word in its file. `written` names the filled-in fields
+    that cite nothing the machine checked. A cited commit with no repo to ask
+    is not checked (unknown_commits says nothing there), so its field stays
+    written. None without a state file: nothing is written down at all.
+    ponytail: quote verdicts are per file (proof_unquoted holds file names), so
+    two quotes from one file share a verdict; per-quote results if that misleads.
+    """
+    st = rec.get("state")
+    if not st:
+        return None
+    has_repo = bool((rec.get("git") or {}).get("committed"))
+    unknown = set(rec.get("proof_unknown") or [])
+    unquoted = set(rec.get("proof_unquoted") or [])
+    checked = [{"what": "state rewritten after the latest work", "ok": not rec.get("drift")}]
+    written = []
+    for key, label in TRUTH_FIELDS:
+        val = st.get(key)
+        if not _has_proof(val):
+            continue
+        cites = [{"what": f"{rel} has the quoted words", "ok": rel not in unquoted}
+                 for rel, _q in QUOTE_RE.findall(val)]
+        if key == "proof":
+            cites += [{"what": f"commit {h} is in the repo", "ok": h not in unknown}
+                      for h in PROOF_COMMIT_RE.findall(val) if has_repo or h in unknown]
+        checked += cites
+        if not cites:
+            written.append(label)
+    n = len(open_blockers(rec.get("blockers") or []))
+    if n:
+        written.append(f"{n} blocker" + ("s" if n > 1 else ""))
+    return {"checked": checked, "written": written}
+
+
 def read_state(path):
     fp = os.path.join(path, STATE_FILE)
     if not os.path.isfile(fp):
@@ -814,6 +858,7 @@ def _build(path, slug, source, slug_dir=None, branch_hint=None):
         "proof_unknown": [],
         "proof_unquoted": [],
         "gate": None,
+        "truth": None,
     }
     newest_tx = None
 
@@ -868,6 +913,7 @@ def _build(path, slug, source, slug_dir=None, branch_hint=None):
         rec["proof_unknown"] = unknown_commits(path, st.get("proof"))
         rec["proof_unquoted"] = unverified_quotes(path, st.get("proof"), st.get("for"), st.get("bet"))
     rec["gate"] = gate(rec)
+    rec["truth"] = truth(rec)
 
     if not rec["last_activity"]:
         newest = max((f["mtime"] for f in rec["files"]), default=None)
@@ -1011,6 +1057,8 @@ def light(rec):
     out["gate"] = g.get("verdict")
     out["gate_next"] = g.get("next")
     out["gap_count"] = len(g.get("gaps") or [])
+    # Small (a few short lines), so /report draws the boundary with no extra fetch.
+    out["truth"] = rec.get("truth")
     return out
 
 
@@ -1476,6 +1524,7 @@ def selftest():
     selftest_regressions()
     selftest_gate()
     selftest_checkpoint()
+    selftest_truth()
     selftest_story()
     print("selftest OK")
 
@@ -1954,6 +2003,55 @@ def selftest_checkpoint():
     assert scan_quoted("docs/interviews.md: 'my prototypes every single month'")["gaps"] == []
     assert [x["id"] for x in scan_quoted("docs/interviews.md: 'my prototypes every day'")["gaps"]] == ["proof_quote"]
 
+    shutil.rmtree(root, ignore_errors=True)
+
+
+def selftest_truth():
+    """The truth boundary never calls a claim checked unless the scan checked
+    it. Each case is a way a naive boundary over-claims."""
+    import tempfile
+    base = {"next_action": "rerun the totals against the ledger", "status": "paused"}
+    repo = {"branch": "main", "subject": "x", "committed": "2026-01-01T00:00:00", "dirty": 0}
+
+    def t(state=None, **rec):
+        return truth(dict({"state": dict(base, **(state or {})), "blockers": [], "drift": None}, **rec))
+
+    assert truth({"state": None}) is None
+    plain = t({"proof": "53/53 passed"})
+    assert plain == {"checked": [{"what": "state rewritten after the latest work", "ok": True}],
+                     "written": ["next action", "status", "proof"]}, plain
+    # A placeholder is nothing written down, not a claim.
+    assert t({"proof": "none yet - run it"})["written"] == ["next action", "status"]
+    # Stale state: the freshness check ran and failed.
+    assert t(drift={"by": "commit"})["checked"][0]["ok"] is False
+    # Cited commit, no repo to ask: unknown_commits said nothing, so nothing was checked.
+    nogit = t({"proof": "6/6 passed; commit abc1234"})
+    assert len(nogit["checked"]) == 1 and "proof" in nogit["written"], nogit
+    # A branch hint without git_info is not a repo either.
+    hint = t({"proof": "commit abc1234"}, git={"branch": "main", "committed": None})
+    assert "proof" in hint["written"], hint
+    ok = t({"proof": "6/6 passed; commit abc1234"}, git=repo)
+    assert ok["checked"][1:] == [{"what": "commit abc1234 is in the repo", "ok": True}], ok
+    assert "proof" not in ok["written"], ok
+    bad = t({"proof": "commit 0badc0de"}, git=repo, proof_unknown=["0badc0de"])
+    assert bad["checked"][1:] == [{"what": "commit 0badc0de is in the repo", "ok": False}], bad
+    # Git disproved it even with no commits to read a date from.
+    assert t({"proof": "commit 0badc0de"}, proof_unknown=["0badc0de"])["checked"][1]["ok"] is False
+    # A quote is checked in any card field; a misquote is checked and false.
+    q = t({"bet": "NOTES.md: 'two hours a day by hand'"}, proof_unquoted=["NOTES.md"])
+    assert q["checked"][1:] == [{"what": "NOTES.md has the quoted words", "ok": False}], q
+    assert "why it matters" not in q["written"], q
+    # Open blockers are claims too; closed ones are not.
+    assert t(blockers=["Me [M]: sign the form", "DONE: shipped"])["written"][-1] == "1 blocker"
+
+    # End to end: _build fills it and light() carries it to the report.
+    root = tempfile.mkdtemp(prefix="coc-truth-")
+    os.makedirs(os.path.join(root, ".claude"))
+    with open(os.path.join(root, STATE_FILE), "w", encoding="utf-8") as fh:
+        fh.write('---\nnext_action: "rerun the totals against the ledger"\nproof: "commit abc1234"\n---\n')
+    rec = _build(root, "truth", "extra")
+    assert rec["truth"]["written"] == ["next action", "proof"], rec["truth"]
+    assert light(rec)["truth"] == rec["truth"]
     shutil.rmtree(root, ignore_errors=True)
 
 

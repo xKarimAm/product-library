@@ -42,11 +42,11 @@ pattern `Name [X]:` is `OWNER_RE`.
 | file reading | `_stat_key`, `read_text`, `tail_text` | per-file cache key `(path, mtime_ns, size)`; UTF-8 with BOM tolerated; tail reads |
 | transcript scanning | `resolve_cwd`, `resolve_project`, `_prompts_in`, `last_prompts`, `is_substantive`, `STOPLIST`, `_story_in`, `project_story` | last real prompt; "continue"/"ok" are filler. The story: `origin` (first substantive prompt of the oldest session), `chapters` (Claude's `ai-title` per session, a user `custom-title` wins, the last record is current) and `prs` (`pr-link` records, https only, de-duplicated) |
 | project folder | `parse_frontmatter`, `parse_plain_state`, `open_blockers`, `waiting_on_me` | session-state parsing (handles 3 real YAML shapes, no YAML library) |
-| drift and the readiness gate | `drift`, `DRIFT_GRACE`, `_epoch`, `OWNER_RE`, `_has_proof`, `gate` | **Ported from Harness.** Drift: work newer than the state file by more than 1h. Gate: hard checks `has_state`, `next_action`, `fresh`; soft checks `blockers_owned`, `proof` (a `none yet` placeholder is not proof), `proof_commit` (every `commit <hash>` the proof cites exists in the repo; set by `unknown_commits` in `_build`), `proof_quote` (every `file: 'words'` in proof/for/bet is word for word in that file inside the project; `unverified_quotes`), `card` (both `for` and `bet` filled in) |
+| drift and the readiness gate | `drift`, `DRIFT_GRACE`, `_epoch`, `OWNER_RE`, `_has_proof`, `gate` | **Ported from Harness.** Drift: work newer than the state file by more than 1h. Gate: hard checks `has_state`, `next_action`, `fresh`; soft checks `blockers_owned`, `proof` (a `none yet` placeholder is not proof), `proof_commit` (every `commit <hash>` the proof cites exists in the repo; set by `unknown_commits` in `_build`), `proof_quote` (every `file: 'words'` in proof/for/bet is word for word in that file inside the project; `unverified_quotes`), `card` (both `for` and `bet` filled in). `truth`, `TRUTH_FIELDS`: the truth boundary, `checked` (every claim the scan verified, true or false: fresh, each cited commit with a repo to ask, each quote) vs `written` (filled-in fields citing nothing checked, plus open blockers) |
 | (state and logs) | `read_state`, `_last_heading`, `read_logs`, `list_files`, `git_info`, `unknown_commits` (`git cat-file -e <hash>^{commit}`; no repo means nothing is unknown) | per-project enrichment |
 | scanning | `_build` (one record per project), `scan` (2s TTL cache; registry builds run on an 8-thread pool because each waits on git), `_dedupe`, `LIGHT`, `light`, `plans` | builds the records the API returns |
 | server | `TOKEN`, `ALLOWED_HOSTS`, `_find_vscode`, `Handler.do_GET`, `Handler.do_POST`, `serve` | HTTP layer |
-| selftest | `selftest`, `selftest_regressions`, `selftest_gate`, `selftest_checkpoint` | every case is a real trap that once failed |
+| selftest | `selftest`, `selftest_regressions`, `selftest_gate`, `selftest_checkpoint`, `selftest_truth`, `selftest_story` | every case is a real trap that once failed |
 
 ## API (served by `Handler`)
 
@@ -68,7 +68,8 @@ Every `/api/*` call needs the header `X-COC-Token`. The token is injected into t
 prompt_trivial note session_id` + `status` (short badge, at most 24 chars, or null) `status_note` (long
 status) `stage` (short badge or null) `proof for bet last_updated next_action has_state waiting_count blocker_count branch dirty resume`
 + **`drift`** (bool) **`gate`** (`"pass"|"fail"|null`) **`gate_next`** (the question to answer first) **`gap_count`**
-+ `origin_prompt origin_at chapter_count latest_chapter pr_count` (the story, as counts).
++ `origin_prompt origin_at chapter_count latest_chapter pr_count` (the story, as counts)
++ **`truth`** (`{checked: [{what, ok}], written: [label]}` or null without a state file; same in the full record).
 
 ### Fields: full record (`_build`), returned by `/api/project/<id>`
 
@@ -95,7 +96,7 @@ JS banners, with what lives in each:
 | render | `layout`, `chipFor` (label chip; shows the `STALE` pill when `p.drift`) | |
 | bubble | `openBubble`, `closeBubble`, `placeBubble` | click popover: stage + STALE badges in the header, NEXT (labelled "written before the latest work" when `p.drift`), last prompt, PROOF, GATE block (`gate`, `gap_count`, `gate_next`), sources, waiting-on-you |
 | actions | `launch` (POST /api/open), `copy` | |
-| sheets | `projectSheet` (full view `/p/<id>`: stale detail, full gate gap list, stage, proof), `blockedSheet`, `plansSheet`, `reportSheet` (`/report`: every project by gate verdict, built from `PROJECTS`, no extra API) | |
+| sheets | `projectSheet` (full view `/p/<id>`: stale detail, full gate gap list, stage, proof), `blockedSheet`, `plansSheet`, `reportSheet` (`/report`: every project by gate verdict plus its truth boundary, checked vs only written down, built from `PROJECTS`, no extra API) | |
 | city: day/night, avenues and traffic, RCI meter, roster panel | `applySky` (palette from the real clock; `?hour=` forces it), `drawRoads`, `spawnVehicles`, `buildMeter`, `buildRoster` (project rail plus the swatch legend) | the SimCity layer. CSS banners `city: ...` hold its styles, including `city: shine` (window flicker, stars, searchlights, blimp; all off under reduced motion) |
 | routing / filter / data / bindings | `go`, `render`, `applyFilter`, `load` | client routes, search box (`#search`), data fetch |
 
