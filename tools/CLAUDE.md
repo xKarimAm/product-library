@@ -16,6 +16,7 @@ Chrome DevTools Protocol client). Run them from the repo root.
 | `err.py` | catches page JS errors before any script runs | yes |
 | `build_poc.py` | builds `../poc_city.html`: a standalone copy of `index.html` with `poc_data.json` (falls back to `sample_data.json`) baked in, so it opens from file:// with no server. The city itself (towers, tents, roads, roster, day/night) lives in `index.html` | no |
 | `pocprobe.py` | 53 geometry and mechanics checks on the POC city; exits 1 on failure | no (file://) |
+| `make_gif.py` | records `docs/tour.gif` (the README tour) from the sample city: drawn cursor, STALE bubble, full view, report. Stdlib GIF encoder (per-frame median-cut palette, changed-rect frames); hides the clone's parent folder and home dir as `~` and refuses a frame that still shows one. `--selftest` = LZW round trip | yes, the sample city (`py sample/make_sample.py --serve`) |
 | `poczoom.py`, `zoomcell.py`, `walkshot.py`, `sheet.py`, `greetsheet.py`, `msgcheck.py` | visual eyeball captures of sprites and the skyline | varies |
 
 Data:

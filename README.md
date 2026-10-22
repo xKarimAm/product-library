@@ -16,7 +16,7 @@
 
 <br />
 
-<img src="docs/city-night.png" alt="Product Library at night: 20 projects as a SimCity-style city" width="1000" />
+<img src="docs/tour.gif" alt="The sample city at night. Clicking a building marked STALE opens its card: the note was written before the latest commit and the readiness gate fails. Its full view explains why, then the Report page lists every project as checked or only written down." width="1000" />
 
 </div>
 
