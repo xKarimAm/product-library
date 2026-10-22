@@ -1,7 +1,7 @@
 # Contributing to Product Library
 
-Focused bug fixes, docs fixes, tests and platform reports (macOS and Linux are untested) are
-welcome. For a bigger change, open an issue first and say what problem it solves.
+Focused bug fixes, docs fixes, tests and platform reports (daily use on macOS and Linux is newest)
+are welcome. For a bigger change, open an issue first and say what problem it solves.
 
 ## Ground rules
 
@@ -23,7 +23,7 @@ python3 sample/make_sample.py
 python3 tools/leakcheck.py
 ```
 
-On Windows use `py` instead of `python3`. CI runs the same four on Windows and Linux.
+On Windows use `py` instead of `python3`. CI runs the same four, plus the skill installer, on Windows, macOS and Linux.
 
 ## Reporting issues
 

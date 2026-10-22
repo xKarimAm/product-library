@@ -34,7 +34,7 @@ Find code by **symbol name** (`grep -n "def gate" library.py`), not by line numb
 | Extra folders | `EXTRA_ROOTS` constant, replaced per machine by env `LIBRARY_EXTRA_ROOTS` (`;`-separated) | `scan` | projects with no registry entry yet; missing folders are skipped |
 
 **Who writes session-state.md:** the user-invoked skill `skills/library-checkpoint/SKILL.md` (installed as a copy in
-`~/.claude/skills/library-checkpoint/`; re-copy after editing). Its `## Example` block is the format contract:
+`~/.claude/skills/library-checkpoint/` by `skills/install.py`; re-run it after editing). Its `## Example` block is the format contract:
 `selftest_checkpoint()` parses it verbatim, so changing the format means changing both together.
 
 Frontmatter conventions: a blocker starting `Me [M]:` counts as waiting on the user

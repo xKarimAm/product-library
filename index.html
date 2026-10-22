@@ -545,6 +545,7 @@ header{
   text-align:center;color:rgba(239,233,247,.7);max-width:360px;
 }
 #empty b{display:block;font:600 15px var(--display);color:#fff;margin-bottom:5px}
+#empty code{color:#fff;background:rgba(255,255,255,.1);padding:1px 5px;border-radius:4px;user-select:all}
 /* Floating legend: a table over the bottom-right of the city. <details> folds
    it down to its title; the meter owns bottom-left, the guide top-left. */
 #legend{position:absolute;right:14px;bottom:14px;z-index:25;max-height:calc(100% - 28px);overflow:auto;
@@ -2717,7 +2718,20 @@ function applyFilter() {
     n.style.setProperty("opacity", on ? "1" : "0.13");
   });
   document.getElementById("empty")?.remove();
-  if (q && !hits) {
+  if (!PROJECTS.length) {
+    // First run with no Claude Code history: say where projects come from
+    // and offer the sample city, instead of an empty map.
+    const e = document.createElement("div");
+    e.id = "empty";
+    e.innerHTML = "<b>No projects yet</b>"
+      + "Product Library reads Claude Code's history in <code>~/.claude/projects</code>. "
+      + "Use Claude Code in a folder, then reload this page.<br><br>"
+      + "To see a full city first, stop this server and run "
+      + "<code>py sample/make_sample.py --serve</code> (macOS/Linux: <code>python3</code>).";
+    hive.appendChild(e);
+    // Nothing for the legend to explain yet, and it would cover this message.
+    document.getElementById("legend")?.removeAttribute("open");
+  } else if (q && !hits) {
     const e = document.createElement("div");
     e.id = "empty";
     e.innerHTML = `<b>Nothing matches &ldquo;${esc(search.value)}&rdquo;</b>`

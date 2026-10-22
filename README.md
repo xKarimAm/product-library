@@ -77,11 +77,12 @@ cd product-library
 Every folder you have used Claude Code in shows up as a building. Stop it with Ctrl+C.
 
 **3. Give your projects a checkpoint** (optional, and what makes the city smart). Install the
-`/library-checkpoint` skill by copying its folder into your Claude Code skills:
+`/library-checkpoint` skill into Claude Code (it copies one folder to `~/.claude/skills`; run it
+again after an update):
 
-| Windows (PowerShell) | macOS / Linux |
+| Windows | macOS / Linux |
 |---|---|
-| `mkdir -Force "$HOME\.claude\skills" > $null; Copy-Item -Recurse skills\library-checkpoint "$HOME\.claude\skills\"` | `mkdir -p ~/.claude/skills && cp -r skills/library-checkpoint ~/.claude/skills/` |
+| `py skills/install.py` | `python3 skills/install.py` |
 
 Then type `/library-checkpoint` at the end of a Claude Code session. It drafts a small
 `.claude/session-state.md` (stage, next step, proof, blockers, who it's for, why it matters) and
@@ -91,9 +92,9 @@ writes it once you approve. Without it projects still show, but their readiness 
 start it again. Cloned before 23 October 2026? The history was reset that day, so `git pull` fails
 once: run `git fetch` then `git reset --hard origin/main` (this drops local edits), or clone again.
 
-**Platform note:** built and tested on **Windows**. The code is plain cross-platform Python and
-should run on macOS and Linux, but that's untested; the "Open in VS Code" button needs the `code`
-command on your PATH there. Issues and fixes are welcome.
+**Platform note:** built on **Windows**. Every change runs the tests and builds the sample city on
+Windows, macOS and Linux in CI; daily use on macOS and Linux is newer, so reports are welcome. The
+"Open in VS Code" button needs the `code` command on your PATH there.
 
 ## Try it with sample projects
 

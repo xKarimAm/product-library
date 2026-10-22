@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -37,6 +37,10 @@ jobs:
         run: python tools/sync_public.py --selftest
       - name: sample projects build and check out
         run: python sample/make_sample.py
+      - name: skill installs
+        run: |
+          python skills/install.py
+          python -c "import os; assert os.path.isfile(os.path.expanduser('~/.claude/skills/library-checkpoint/SKILL.md'))"
       - name: leakcheck
         # Private words live in a repo secret, never in the repo. Without the
         # secret (a fork, the public copy) the built-in rules still run.

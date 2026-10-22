@@ -29,7 +29,8 @@ Product Library is a local, read-only tool:
 - Every `/api/*` call needs a per-session random token, and the page runs under a strict
   Content-Security-Policy with a per-request nonce.
 - It never writes into project folders or `~/.claude`. The only write is the opt-in history file
-  in its own data folder, and it refuses a folder inside `~/.claude` or any project.
+  in its own data folder, and it refuses a folder inside `~/.claude` or any project. Separately,
+  `skills/install.py`, which you run yourself, copies one skill folder into `~/.claude/skills`.
 - The only action it takes is opening VS Code on a project chosen by id from its own scan; a path
   is never accepted. Git runs as a subprocess with list arguments, never a shell string.
 - It makes no network calls and has no third-party dependencies.
