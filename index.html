@@ -67,11 +67,14 @@ header{
              inset 0 1px 0 rgba(255,255,255,.35);
 }
 .waiting:hover{filter:brightness(1.06)}
-.waiting b{font:600 16px var(--display)}
+.waiting b{font:600 16px var(--display);font-variant-numeric:tabular-nums}
+/* Same weight as the lit pill: a lighter "0" made the pill grow when the count
+   arrived and shoved the nav over (a 0.156 layout shift on every load). */
 .waiting.none{
-  background:rgba(255,255,255,.06);color:rgba(239,233,247,.55);font-weight:400;
+  background:rgba(255,255,255,.06);color:rgba(239,233,247,.55);
   box-shadow:0 0 0 1px rgba(255,255,255,.12);
 }
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .navlink{color:rgba(239,233,247,.62);padding:7px 12px;border-radius:9px}
 .navlink:hover{color:#fff;background:rgba(255,255,255,.09)}
 .navlink[aria-current="page"]{color:#fff;background:rgba(139,92,246,.34)}
@@ -93,8 +96,11 @@ header{
              var(--ground-1) 50%,var(--ground-2b) 76%,var(--ground-2) 100%);
 }
 /* The broad bloom is what makes the field read as lit rather than filled. */
+/* Scaled, not inset:-32%: a negative inset put its corner 32% of the hive's
+   height above it, so the corner moved when the city grew on load and counted
+   as a 0.154 layout shift. scale(1.64) = 1 + 2 x .32, the same glow. */
 .bloom{
-  inset:-32%;
+  transform:scale(1.64);
   background:radial-gradient(50% 46% at 50% 54%,
     rgba(226,84,204,.46) 0%,rgba(184,50,170,.30) 26%,rgba(122,30,126,.16) 46%,
     rgba(58,15,107,.06) 66%,rgba(27,10,61,0) 82%);
@@ -238,7 +244,7 @@ header{
   background:rgba(255,255,255,.9);width:fit-content;margin-left:10px;
   box-shadow:0 3px 12px rgba(9,3,24,.34);
 }
-.node.small .chip{padding:3px 9px 3px 7px}
+.node.small .chip{padding:3px 9px 3px 7px;min-height:24px}   /* WCAG 2.5.8: 24px targets */
 .node.small .chip .nm{font-size:11.5px}
 .node.small .meta{display:none}
 .node.far .chip{background:rgba(244,241,234,.82);color:var(--ink-far)}
@@ -793,6 +799,7 @@ header{
     </div>
     <div class="spacer"></div>
     <button class="waiting none" id="waiting" type="button"><b id="waitn">0</b> waiting on you</button>
+    <div id="announce" class="sr-only" aria-live="polite"></div>
     <button class="navlink" id="navreport" type="button">Report</button>
     <button class="navlink" id="navplans" type="button">Plans</button>
     <input id="search" type="search" placeholder="Search projects  /" aria-label="Search projects" autocomplete="off">
@@ -967,10 +974,13 @@ function el(tag, cls, attrs) {
 function toast(msg, warn) {
   document.getElementById("toast")?.remove();
   const t = document.createElement("div");
-  t.id = "toast"; t.setAttribute("aria-live", "polite");
+  t.id = "toast";
   if (warn) t.className = "warn";
   t.textContent = msg;
   hive.appendChild(t);
+  // Screen readers announce changes to a live region that already exists; one
+  // created together with its text, as the toast is, is often missed.
+  document.getElementById("announce").textContent = msg;
   setTimeout(() => t.remove(), 3200);
 }
 
