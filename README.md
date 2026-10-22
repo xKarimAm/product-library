@@ -88,7 +88,8 @@ Then type `/library-checkpoint` at the end of a Claude Code session. It drafts a
 writes it once you approve. Without it projects still show, but their readiness gate can't pass.
 
 **Update** to the latest version any time with `git pull` in the `product-library` folder, then
-start it again.
+start it again. Cloned before 23 October 2026? The history was reset that day, so `git pull` fails
+once: run `git fetch` then `git reset --hard origin/main` (this drops local edits), or clone again.
 
 **Platform note:** built and tested on **Windows**. The code is plain cross-platform Python and
 should run on macOS and Linux, but that's untested; the "Open in VS Code" button needs the `code`
