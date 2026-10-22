@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/xKarimAm/product-library/security/advisories/new
+    about: Report privately. Never open a public issue for a vulnerability.
+  - name: Read the README
+    url: https://github.com/xKarimAm/product-library#readme
+    about: Setup, the sample city, history and settings.

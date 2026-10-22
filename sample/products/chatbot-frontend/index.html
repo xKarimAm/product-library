@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chatbot</title>
+<style>
+  :root { --bg:#0f1117; --panel:#181b24; --me:#3b6cff; --bot:#262a36; --ink:#e8eaf0; --soft:#8b91a3 }
+  * { box-sizing:border-box }
+  body { margin:0; height:100vh; display:flex; flex-direction:column; background:var(--bg); color:var(--ink);
+         font:15px/1.45 system-ui, sans-serif }
+  header { padding:14px 18px; background:var(--panel); font-weight:600 }
+  header span { color:var(--soft); font-weight:400; font-size:13px; margin-left:8px }
+  #log { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:10px }
+  .msg { max-width:72%; padding:9px 13px; border-radius:14px; white-space:pre-wrap }
+  .me { align-self:flex-end; background:var(--me); border-bottom-right-radius:4px }
+  .bot { align-self:flex-start; background:var(--bot); border-bottom-left-radius:4px }
+  .typing { color:var(--soft); font-style:italic }
+  form { display:flex; gap:8px; padding:12px; background:var(--panel) }
+  input { flex:1; padding:11px 13px; border-radius:10px; border:1px solid #2f3442; background:var(--bg); color:var(--ink) }
+  button { padding:0 18px; border:0; border-radius:10px; background:var(--me); color:#fff; font-weight:600 }
+</style>
+</head>
+<body>
+<header>Chatbot <span>front end only &middot; canned replies until a model provider is picked</span></header>
+<main id="log" aria-live="polite"></main>
+<form id="f"><input id="q" placeholder="Ask something..." autocomplete="off" aria-label="Message"><button>Send</button></form>
+<script>
+  const log = document.getElementById("log"), q = document.getElementById("q");
+  // Canned until the provider decision is made; swap reply() for a fetch then.
+  const RULES = [
+    [/hello|hi\b/i, "Hi! I'm a front end waiting for a brain. Ask me anything."],
+    [/price|cost/i, "Pricing depends on which model provider gets picked."],
+    [/help/i, "Try: hello, price, or anything else."],
+  ];
+  // No rule matched: rotate through these, so the same line never comes twice in a row.
+  const FALLBACK = ['Noted: "%s". A real model will answer soon.', 'Good question. "%s" goes to the model once it is wired in.',
+                    'I only know canned lines for now, but "%s" is saved for later.'];
+  let turn = 0;
+  const reply = (t) => (RULES.find(([re]) => re.test(t)) || [, FALLBACK[turn++ % FALLBACK.length].replace("%s", t)])[1];
+  function add(text, who) {
+    const m = document.createElement("div");
+    m.className = "msg " + who;
+    m.textContent = text;          // textContent, never innerHTML: user text is untrusted
+    log.appendChild(m);
+    log.scrollTop = log.scrollHeight;
+    return m;
+  }
+  document.getElementById("f").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const t = q.value.trim();
+    if (!t) return;
+    add(t, "me");
+    q.value = "";
+    const dots = add("typing...", "bot typing");
+    setTimeout(() => { dots.remove(); add(reply(t), "bot"); }, 600);
+  });
+  add("Hello! This is the chatbot front end.", "bot");
+</script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+# Same LF checkouts on every platform.
+* text=auto eol=lf
+*.png binary

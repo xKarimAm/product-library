@@ -1,0 +1,22 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sample",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "sample/make_sample.py",
+        "--serve"
+      ],
+      "port": 7777
+    },
+    {
+      "name": "app",
+      "runtimeExecutable": "py",
+      "runtimeArgs": [
+        "library.py"
+      ],
+      "port": 7777
+    }
+  ]
+}

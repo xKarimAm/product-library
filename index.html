@@ -1,0 +1,3311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Library</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%22-1%20-1%2012%2011%22%20shape-rendering%3D%22crispEdges%22%3E%3Cg%20fill%3D%22%23D4785A%22%3E%3Crect%20x%3D%222%22%20y%3D%220%22%20width%3D%226%22%20height%3D%224%22/%3E%3Crect%20x%3D%220%22%20y%3D%224%22%20width%3D%2210%22%20height%3D%222%22/%3E%3Crect%20x%3D%222%22%20y%3D%226%22%20width%3D%226%22%20height%3D%221%22/%3E%3Crect%20x%3D%221%22%20y%3D%227%22%20width%3D%221%22%20height%3D%222%22/%3E%3Crect%20x%3D%223%22%20y%3D%227%22%20width%3D%221%22%20height%3D%222%22/%3E%3Crect%20x%3D%226%22%20y%3D%227%22%20width%3D%221%22%20height%3D%222%22/%3E%3Crect%20x%3D%228%22%20y%3D%227%22%20width%3D%221%22%20height%3D%222%22/%3E%3C/g%3E%3Cg%20fill%3D%22%23111%22%3E%3Crect%20x%3D%223%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22/%3E%3Crect%20x%3D%226%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22/%3E%3C/g%3E%3C/svg%3E">
+<style nonce="{{NONCE}}">
+/* ============================================================ Product Library / tokens
+   Violet ground, light slabs, clay bots. The brief named make.com's Grid, so
+   the violet is deliberate rather than a default reach.
+
+   Gradients interpolate `in oklch`. In sRGB a violet-to-magenta ramp passes
+   through a desaturated middle and reads muddy, which is precisely the "dull"
+   failure this redesign exists to fix. Each oklch gradient is preceded by an
+   sRGB declaration so a browser without oklch support still gets the ramp. */
+:root{
+  --ground-0:#1B0A3D; --ground-0b:#2A0C52; --ground-1:#3A0F6B;
+  --ground-2b:#5C1675; --ground-2:#7A1E7E;
+  --grid-line:rgba(255,255,255,.08);
+  --top:#F7F5FB; --top-hi:#FFFFFF; --side-l:#C9C0DE; --side-r:#A79BC9;
+  --m-violet:#8B5CF6; --m-blue:#3D7BFF; --m-green:#1FBF75; --m-red:#FF4D5E;
+  --clay:#D4785A; --clay-lite:#EDA184; --clay-dark:#B05B41; --clay-rgb:212,120,90;
+  --eye:#111111;
+  --cream:#F4F1EA; --ink:#2B2621; --ink-soft:#6E6459; --ink-far:#5A4D6B;
+  --rule:rgba(43,38,33,.12);
+  --display:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --text:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --mono:"Cascadia Mono",Consolas,ui-monospace,monospace;
+  --r:12px;            /* one radius scale, used everywhere */
+  --r-pill:999px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--ground-0);color:#EFE9F7;
+  font:400 14px/1.5 var(--text);overflow:hidden;-webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--clay-lite);outline-offset:3px;border-radius:6px}
+::selection{background:var(--m-violet);color:#fff}
+
+#app{display:flex;flex-direction:column;height:100%}
+
+/* ------------------------------------------------------------------ header */
+header{
+  display:flex;align-items:center;gap:20px;padding:13px 22px;flex:none;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0));
+  position:relative;z-index:30;
+}
+.brand{display:flex;align-items:center;gap:11px}
+.brand svg{display:block}
+.brand h1{margin:0;font:600 16.5px var(--display);letter-spacing:-.02em}
+.brand .sub{color:rgba(239,233,247,.62);font-size:12.5px}
+.spacer{flex:1}
+
+/* The one figure on this page that demands an action, so it gets the halo. */
+.waiting{
+  display:flex;align-items:center;gap:9px;padding:8px 15px;border-radius:var(--r-pill);
+  background:linear-gradient(180deg,var(--clay-lite),var(--clay) 52%,var(--clay-dark));
+  color:#fff;font-weight:600;letter-spacing:-.01em;
+  box-shadow:0 0 0 1px rgba(255,241,232,.30),0 6px 22px rgba(var(--clay-rgb),.45),
+             inset 0 1px 0 rgba(255,255,255,.35);
+}
+.waiting:hover{filter:brightness(1.06)}
+.waiting b{font:600 16px var(--display)}
+.waiting.none{
+  background:rgba(255,255,255,.06);color:rgba(239,233,247,.55);font-weight:400;
+  box-shadow:0 0 0 1px rgba(255,255,255,.12);
+}
+.navlink{color:rgba(239,233,247,.62);padding:7px 12px;border-radius:9px}
+.navlink:hover{color:#fff;background:rgba(255,255,255,.09)}
+.navlink[aria-current="page"]{color:#fff;background:rgba(139,92,246,.34)}
+#search{
+  width:212px;padding:8px 13px;border-radius:10px;color:#fff;font:inherit;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+}
+#search::placeholder{color:rgba(239,233,247,.45)}
+#search:focus{border-color:var(--clay-lite);outline:none;background:rgba(255,255,255,.12)}
+
+/* ------------------------------------------------------- the isometric hive */
+#hive{position:relative;flex:1;overflow:hidden;isolation:isolate}
+.lyr{position:absolute;inset:0;pointer-events:none}
+
+.ground{
+  background:linear-gradient(163deg,var(--ground-0) 0%,var(--ground-0b) 24%,
+             var(--ground-1) 50%,var(--ground-2b) 76%,var(--ground-2) 100%);
+  background:linear-gradient(163deg in oklch,var(--ground-0) 0%,var(--ground-0b) 24%,
+             var(--ground-1) 50%,var(--ground-2b) 76%,var(--ground-2) 100%);
+}
+/* The broad bloom is what makes the field read as lit rather than filled. */
+.bloom{
+  inset:-32%;
+  background:radial-gradient(50% 46% at 50% 54%,
+    rgba(226,84,204,.46) 0%,rgba(184,50,170,.30) 26%,rgba(122,30,126,.16) 46%,
+    rgba(58,15,107,.06) 66%,rgba(27,10,61,0) 82%);
+}
+.core-glow{animation:breath 9.5s ease-in-out infinite}
+@keyframes breath{0%,100%{opacity:.7}50%{opacity:1}}
+.core-glow{
+  background:radial-gradient(17% 16% at 50% 56%,
+    rgba(255,178,246,.42) 0%,rgba(236,110,214,.20) 40%,rgba(160,40,150,0) 76%);
+}
+.sky{background:linear-gradient(180deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,0) 24%)}
+/* Below the slabs, so corners fall away without muddying any light surface. */
+.vig{
+  background:radial-gradient(72% 58% at 50% 54%,
+    rgba(9,3,24,0) 30%,rgba(11,4,28,.44) 60%,rgba(9,3,22,.74) 81%,rgba(4,1,12,.93) 100%);
+}
+/* Grain, not more colour stops: banding on a large ramp is 8-bit quantisation,
+   and extra stops add no precision. Fixed and pointer-events:none so it never
+   repaints with a scrolling container. */
+.grain{opacity:.055;mix-blend-mode:overlay}
+
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+#scene .floor{stroke:var(--grid-line);stroke-width:1;fill:none}
+#scene .floor-hot{stroke:url(#hotline);stroke-width:1.4;fill:none;opacity:.5}
+#scene .shadow{fill:url(#slabshadow)}
+#scene .top{fill:url(#slabtop)}
+#scene .side-l{fill:var(--side-l)}
+#scene .side-r{fill:var(--side-r)}
+#scene .edge-hi{stroke:rgba(255,255,255,.85);stroke-width:1;fill:none}
+#scene .wire{stroke:rgba(43,38,33,.28);stroke-width:1.1;fill:none}
+#scene .wire.live{stroke:rgba(139,92,246,.75)}
+#scene .mod{stroke:rgba(255,255,255,.55);stroke-width:.9}
+#scene .mod.hub{stroke:rgba(255,255,255,.75)}
+/* Walls take the same fill as the roof and are dimmed here, so a module needs
+   one colour and still lights correctly. The left wall faces away, so darker. */
+#scene .modw{stroke:none}
+#scene .modw.left{filter:brightness(.58)}
+#scene .modw.right{filter:brightness(.8)}
+#scene .modsh{fill:rgba(18,5,32,.34)}
+/* Roof and both walls carry the same --md, so the prism hovers as one rigid
+   body. The contact shadow deliberately stays put; that is what sells lift. */
+#scene .mod,#scene .modw{animation:hoverm 3.8s ease-in-out infinite var(--md,0s)}
+@keyframes hoverm{0%,100%{translate:0 0}50%{translate:0 -1.6px}}
+/* The packet: a second copy of the wire, dashed and drifting outward. Two
+   elements per wire, nothing ticking in JS, nothing to clean up. */
+#scene .flow{
+  fill:none;stroke-width:2.2;stroke-linecap:round;stroke-dasharray:2.5 14;
+  opacity:.9;animation:packet var(--fd,3s) linear infinite;
+}
+@keyframes packet{from{stroke-dashoffset:16.5}to{stroke-dashoffset:0}}
+/* A sweep over the hot floor lines. Opacity only, so it costs no relayout. */
+#scene .floor-hot{animation:sweep 7.5s ease-in-out infinite}
+@keyframes sweep{0%,100%{opacity:.2}50%{opacity:.62}}
+/* ------------------------------------------------------------- the hive */
+/* Comb cells. The top face is the lit surface; the two walls give the comb its
+   thickness. Cells share full edges, so the seams below are what read as the
+   honeycomb and no connecting lines have to be drawn at all. */
+#scene .cell-t{fill:url(#slabtop)}
+#scene .cell-t.vac{fill:#8355A0}
+#scene .cell-l{fill:var(--side-l)}
+#scene .cell-r{fill:var(--side-r)}
+#scene .plaque.vacant .cell-l{fill:#5A3273}
+#scene .plaque.vacant .cell-r{fill:#6D3F88}
+/* One hairline on every cell edge. This is the comb wall, and it is what makes
+   the field read as connected cells rather than as loose hexagons. */
+#scene .cell-rim{fill:none;stroke:rgba(80,30,110,.5);stroke-width:1}
+#scene .plaque.vacant .cell-rim{stroke:rgba(255,255,255,.1)}
+/* Huts. Walls stay neutral so the ROOF carries the colour, and the roof colour
+   is the project's own state, matching its silos. */
+#scene .hut-t{fill:#F1E9DC}
+#scene .hut-r{fill:#CDBCA6}
+#scene .hut-l{fill:#A08C77}
+#scene .roof-l{fill:var(--roof,var(--clay))}
+#scene .roof-r{fill:var(--roof,var(--clay));filter:brightness(1.2)}
+#scene .roof-b{fill:var(--roof,var(--clay));filter:brightness(.68)}
+/* Work landed after the last session-state write, so NEXT may be out of date.
+   An outline rather than a fill: the roof colour already means something. */
+#scene .hut.stale .roof-l,#scene .hut.stale .roof-r{stroke:#FFD55A;stroke-width:1.6;stroke-dasharray:3 2;stroke-linejoin:round}
+#scene .hut.cold .hut-t{fill:#BCB1C8}
+#scene .hut.cold .hut-r{fill:#988BAA}
+#scene .hut.cold .hut-l{fill:#716483}
+#scene .hut.cold .roof-l,#scene .hut.cold .roof-r,#scene .hut.cold .roof-b{
+  filter:saturate(.66) brightness(.82);
+}
+/* The lamp is the one thing in the scene allowed to be bright. */
+#scene .lamp{fill:#FFE9B8}
+#scene .lampglow{fill:#FFC978;opacity:.22;animation:lampflick 5.5s ease-in-out infinite}
+@keyframes lampflick{0%,100%{opacity:.16}50%{opacity:.34}}
+#scene .plaque{cursor:pointer}
+/* An unclaimed slot in the block. Shaded rather than translucent, so the plate
+   still reads as one solid floor with a vacant lot in it. */
+#scene .plaque.vacant{cursor:default;filter:brightness(.94) saturate(.8)}
+/* Far slabs lose saturation toward the ground hue so depth reads as distance.
+   Set per plaque from JS; it is a fill opacity on a haze polygon, never a blur
+   on text. */
+#scene .haze{fill:var(--haze-col);pointer-events:none}
+
+/* ------------------------------------------- HTML overlays (crisp text only) */
+#nodes,#bots{position:absolute;inset:0;pointer-events:none}
+.node{
+  position:absolute;left:var(--x);top:var(--y);transform:translate(-50%,-50%);
+  pointer-events:auto;text-align:left;padding:0;
+  transition:transform .14s ease;
+}
+.node:hover{transform:translate(-50%,-50%) translateY(-2px)}
+.chip{
+  display:flex;align-items:center;gap:7px;max-width:var(--cw,190px);
+  padding:4px 11px 4px 9px;border-radius:var(--r-pill);
+  /* Owner decision 2026-09-09: a white cloud. Near-white rather than cream, a bright
+     rim, and a wide soft halo so the label separates from the hive under it
+     whatever colour that happens to be. */
+  background:linear-gradient(180deg,#FFFFFF,#F6F8FE 64%,#E7EDF8);
+  color:#141019;
+  box-shadow:0 0 0 1px rgba(255,255,255,.9),0 2px 3px rgba(9,3,24,.28),
+             0 9px 24px rgba(9,3,24,.44),0 0 26px rgba(255,255,255,.18);
+}
+.chip .dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--m-green)}
+.chip .dot.mid{background:var(--m-blue)}
+.chip .dot.old{background:#8E82A8}
+.chip .dot.warn{background:var(--m-red)}
+.chip .nm{
+  font:600 12.5px var(--display);letter-spacing:-.01em;
+  overflow:hidden;text-overflow:ellipsis;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  overflow-wrap:anywhere;line-height:1.18;
+}
+.chip .flag{
+  flex:none;font:600 11px var(--text);padding:1px 7px;border-radius:var(--r-pill);
+  background:linear-gradient(180deg,var(--clay-lite),var(--clay));color:#fff;
+  box-shadow:0 1px 2px rgba(43,38,33,.3);
+}
+.chip .stale,#bubble .badge.stale{
+  flex:none;font:600 9.5px var(--display);letter-spacing:.08em;padding:1px 6px;
+  border-radius:var(--r-pill);background:#FFF3C4;color:#7A4E00;box-shadow:inset 0 0 0 1px #D9A21B;
+}
+#bubble .gate{margin-top:12px}
+#bubble .gate .lead b{color:var(--m-red)}
+.meta{
+  margin-top:3px;font:400 10px var(--mono);color:var(--ink-soft);
+  white-space:nowrap;padding:1px 8px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,.9);width:fit-content;margin-left:10px;
+  box-shadow:0 3px 12px rgba(9,3,24,.34);
+}
+.node.small .chip{padding:3px 9px 3px 7px}
+.node.small .chip .nm{font-size:11.5px}
+.node.small .meta{display:none}
+.node.far .chip{background:rgba(244,241,234,.82);color:var(--ink-far)}
+.node.dim{opacity:.14}
+.node.gone .chip .nm{text-decoration:line-through;text-decoration-color:var(--ink-soft)}
+.node.unres .chip .nm{font-style:italic}
+.node.open .chip{box-shadow:0 0 0 2px var(--clay),0 4px 16px rgba(var(--clay-rgb),.5)}
+
+/* ------------------------------------------------------------------ the bots */
+/* Clay pixel workers. Motion is the data: only projects touched in the last
+   seven days get bots, so a still slab genuinely means a quiet project. */
+/* A villager is scene content now, positioned by a transform written from JS.
+   pointer-events:none is REQUIRED, not cosmetic: the cell click handler resolves
+   through e.target.closest(".plaque"), and a villager is not inside one, so a
+   click landing on a villager would find nothing and silently close the bubble.
+   That would break the launcher. */
+.bot{pointer-events:none}
+.bot .legsB{opacity:0}
+.bot .lid{opacity:0}
+@keyframes bob{0%,100%{translate:0 0}50%{translate:0 -2px}}
+
+/* Phase 2, 2026-09-10: the old `stroll` pacing keyframe is DELETED, not
+   disabled. It drove position from CSS via a --span nobody ever set, and
+   position is now owned by the frame loop through the outer group's
+   `transform`. Two owners of one property is the bug that never reproduces.
+   .walk is therefore only the gait: legs, and the body hop. */
+/* Two leg frames cross-faded on a 2-step timing gives a hard 6fps footfall
+   with no scripting and nothing to clean up. */
+/* NO --delay on any of the travel animations, unlike the trades. --delay is up
+   to 1.86s and exists to desynchronise villagers standing still at home. A
+   villager that has just STARTED WALKING cannot afford it: the class is applied
+   the moment it departs, so an animation-delay parks the legs and the hop for
+   up to 1.86s and the sprite slides across the comb with its feet frozen. That
+   is exactly the "goofy" walk the owner reported. Travellers depart at different
+   times anyway, so they need no artificial desync. */
+.bot.walk .legsA{animation:frameA .32s steps(2,end) infinite}
+.bot.walk .legsB{animation:frameB .32s steps(2,end) infinite}
+@keyframes frameA{0%,49.9%{opacity:1}50%,100%{opacity:0}}
+@keyframes frameB{0%,49.9%{opacity:0}50%,100%{opacity:1}}
+.bot.walk .body{animation:hop .32s steps(2,end) infinite}
+@keyframes hop{0%,49.9%{translate:0 0}50%,100%{translate:0 -1px}}
+/* Blink is a clay lid dropped over the eyes for one frame, so the eyes stay
+   plain rects and nothing animates SVG geometry. */
+.bot .lid{animation:blink 5.2s step-end infinite var(--blink,0s)}
+@keyframes blink{0%,96%{opacity:0}96.5%,99%{opacity:1}99.5%,100%{opacity:0}}
+/* Carried props and the waiting bob drop --delay for the same reason as the
+   gait above: they only ever appear on a villager that is already travelling. */
+.bot .load{animation:carry 1.6s ease-in-out infinite}
+@keyframes carry{0%,100%{translate:0 0}50%{translate:0 -2px}}
+/* Standing at the far end of a trip. Reuses `bob` so a waiting villager
+   breathes: a frozen sprite among moving ones reads as a bug, not as a pause. */
+.bot.wait{animation:bob 1.6s ease-in-out infinite}
+/* The pennant flutters on `carry`, an existing keyframe. No new one needed. */
+.bot .pennant{animation:carry 1.1s ease-in-out infinite}
+
+/* Activity is identity, not decoration: every front-comb villager works a
+   trade, assigned round-robin so the district shows the whole roster. Recency
+   is still read from the combs and the solid sleepers, not from the trade.
+   The trades that ARE arm motion (farm, build, swim) cross-fade armA/armB; the
+   ones that hold a tool still (fish, paint, read) PIN one arm with a static
+   opacity rule, so the tool stays in hand even when reduced motion parks every
+   animation. */
+.bot .armB{opacity:0}
+
+/* Farming: hoeing the plot, the seedling breathing beside it. */
+.bot.farm{animation:bob 1.6s ease-in-out infinite var(--delay,0s)}
+.bot.farm .armA{animation:frameA .44s steps(2,end) infinite var(--delay,0s)}
+.bot.farm .armB{animation:frameB .44s steps(2,end) infinite var(--delay,0s)}
+.bot.farm .crop{animation:sprout 3.2s ease-in-out infinite var(--delay,0s)}
+@keyframes sprout{0%,100%{translate:0 1px;opacity:.5}50%{translate:0 -1px;opacity:1}}
+
+/* Lunch break: leans in and takes a bite. */
+.bot.eat{animation:lean 2.6s ease-in-out infinite var(--delay,0s)}
+@keyframes lean{0%,100%{translate:0 0}45%{translate:1px 1px}}
+.bot.eat .food{transform-origin:11.5px 6.5px;animation:munch 2.6s ease-in-out infinite var(--delay,0s)}
+@keyframes munch{0%,30%{scale:1}45%{scale:.5}60%,100%{scale:1}}
+
+/* Swimming: treads water so it bobs INTO the surface, arms stroking, legs gone
+   under the water that is drawn over them, ripple drifting across the top. */
+.bot.swim{animation:tread 2.4s ease-in-out infinite var(--delay,0s)}
+@keyframes tread{0%,100%{translate:0 0}50%{translate:0 1px}}
+.bot.swim .armA{animation:frameA .5s steps(2,end) infinite var(--delay,0s)}
+.bot.swim .armB{animation:frameB .5s steps(2,end) infinite var(--delay,0s)}
+.bot.swim .legsA,.bot.swim .legsB{opacity:0}
+.bot.swim .ripple{animation:drift 3s linear infinite var(--delay,0s)}
+@keyframes drift{0%{translate:0 0}100%{translate:3px 0}}
+
+/* Civil engineer: hammering, while the crane raises and lowers its load. */
+.bot.build{animation:bob 1.7s ease-in-out infinite var(--delay,0s)}
+.bot.build .armA{animation:frameA .38s steps(2,end) infinite var(--delay,0s)}
+.bot.build .armB{animation:frameB .38s steps(2,end) infinite var(--delay,0s)}
+.bot.build .hook{animation:hoist 3.4s ease-in-out infinite var(--delay,0s)}
+@keyframes hoist{0%,100%{translate:0 -1px}50%{translate:0 2px}}
+
+/* Fishing: the raised arm holds the rod (pinned), only the bobber dips. */
+.bot.fish .armA{opacity:0}
+.bot.fish .armB{opacity:1}
+.bot.fish{animation:bob 2.8s ease-in-out infinite var(--delay,0s)}
+.bot.fish .bobber{animation:dip 2.4s ease-in-out infinite var(--delay,0s)}
+@keyframes dip{0%,68%{translate:0 0}80%{translate:0 1.4px}92%,100%{translate:0 0}}
+
+/* Painting: brush arm pinned up, a fresh dab keeps appearing on the canvas. */
+.bot.paint .armA{opacity:0}
+.bot.paint .armB{opacity:1}
+.bot.paint{animation:bob 2.4s ease-in-out infinite var(--delay,0s)}
+.bot.paint .brush{transform-origin:9px 3px;animation:stroke 1.9s ease-in-out infinite var(--delay,0s)}
+@keyframes stroke{0%,100%{translate:0 0}50%{translate:-1px 1px}}
+.bot.paint .dab{animation:dab 1.9s steps(1,end) infinite var(--delay,0s)}
+@keyframes dab{0%,45%{opacity:0}55%,100%{opacity:1}}
+
+/* Reading: both arms hold the book (armA is on by default), a page turns. */
+.bot.read{animation:bob 3.2s ease-in-out infinite var(--delay,0s)}
+.bot.read .pageR{transform-origin:6px 6px;animation:flip 4.2s ease-in-out infinite var(--delay,0s)}
+@keyframes flip{0%,84%,100%{scale:1 1}90%{scale:.2 1}}
+
+/* Asleep: the lid is held shut rather than blinking, legs are tucked, and a z
+   drifts off the head. No rotation, which would swing the feet off the tile. */
+.bot.sleep .lid{opacity:1;animation:none}
+.bot.sleep .legsA{opacity:0}
+.bot.sleep .legsB{opacity:1}
+.bot.sleep .body{animation:snore 4.4s ease-in-out infinite var(--delay,0s)}
+@keyframes snore{0%,100%{translate:0 0}50%{translate:0 -1px}}
+.bot.sleep .zed{transform-origin:11.5px -4.5px;animation:zfloat 4.4s ease-in-out infinite var(--delay,0s)}
+@keyframes zfloat{
+  0%{opacity:0;translate:0 3px;scale:.6}
+  35%{opacity:.85}
+  70%{opacity:.7}
+  100%{opacity:0;translate:2px -4px;scale:1.1}
+}
+.bot.carry{animation:bob 1.9s ease-in-out infinite var(--delay,0s)}
+
+/* ------------------------------------------------- Phase 3: cursor proximity */
+/* NO EYE TRACKING, and it is not a tuning problem - Owner decision, 2026-09-13, looking at
+   the built version: "no need for the eyes to get detached from the body".
+
+   The sprite forbids it, and the mechanism is not the one you would guess.
+   rects() emits a rect ONLY for '#' cells, and BOT row 1 is "..#o##o#..", so the
+   .body group paints clay at x=2,4,5,7 and NOTHING AT x=3 OR x=6. The eye sockets
+   are literally holes in the body, and the only paint covering them is the pupils
+   themselves, which live in .eyes. Translate .eyes by any non-zero amount and it
+   carries that paint away: two background-coloured holes open in the middle of
+   the face. Every non-zero offset does it, vertical ones included - this is not a
+   matter of the pupil landing somewhere acceptable, it is about what it leaves
+   behind. "The pupil still lands on clay" is true and irrelevant, and an earlier
+   version of this comment made exactly that mistake.
+
+   Filling the sockets with clay in .body first would fix the holes and leave the
+   second problem: one clay pixel separates each pupil from the silhouette, so a
+   horizontal shift puts it on the edge of the head. Sub-pixel motion is a smear
+   on crispEdges pixel art, and widening the head changes the sprite the owner kept
+   when he rejected the three.js spike.
+
+   The eyes group SURVIVES the removal on its own merits. The blink lid used to be
+   a SIBLING of the pupils with its rects hardcoded at x=3 and x=6; it is now a
+   child of .eyes generated by the same eyes() scan in clay instead of ink, so lid
+   and pupils cannot drift apart if BOT is ever edited. That was a latent bug
+   independent of tracking, and it stays fixed. */
+
+/* The wave is its own limb, never a re-use of armA/armB. Those two cross-fade
+   under farm, swim and build and are pinned opaque under fish, paint and read,
+   so greeting through them would either fight a running keyframe or drop the
+   hand a tool is held in. .wav draws from the right shoulder upward and is
+   continuous with armA's rows, so it reads as that arm raised rather than a
+   third one. */
+.bot .wav{opacity:0}
+.bot.greet .wav{opacity:1;transform-origin:8.5px 4px;animation:wavehand .52s ease-in-out infinite}
+@keyframes wavehand{0%,100%{rotate:-10deg}50%{rotate:16deg}}
+/* WAV occupies (8,2) and (8,3), which are armB's cells - ARM is drawn at y0=2 for
+   armB and y0=4 for armA. fish and paint PIN armB visible to hold a tool, and
+   farm, swim and build cross-fade it, so without these two rules a greeting
+   villager rotates the wave arm straight through a second, static right arm.
+   So a greeting is one deterministic pose for every trade: armA down, armB off,
+   WAV raised. `animation:none` is required on both - a running keyframe beats a
+   plain declaration in the cascade, so opacity alone would lose to frameA/frameB.
+   The COST, accepted: for the 0.5-3s a villager greets, farm/swim/build stop
+   cross-fading and fish/paint show armA instead of the arm that holds the rod or
+   brush. The tool itself is in the back/front groups and is never touched. Two
+   right arms is the worse read. */
+.bot.greet .armA{animation:none;opacity:1}
+.bot.greet .armB{animation:none;opacity:0}
+
+/* A sleeper is in the LOOK ring but never the GREET ring - Owner decision, 2026-09-13:
+   eyes open, no wave. It keeps snoring, because a 1px breathing bob reads the
+   same awake, and keeping it avoids touching the sleep pose at all. The z's stop
+   because a creature looking straight at you is not still dreaming. Sleepers
+   never move remains true: nothing here changes a position. */
+.bot.sleep.peek .lid{opacity:0}
+.bot.sleep.peek .zed{animation:none;opacity:0}
+
+/* ------------------------------------------------------------- the bubble */
+/* The owner asked for a bubble that pops out of the node, so it is anchored with a
+   tail rather than parked in a rail, and it scales from the slab's own
+   coordinates. Cream appears ONLY here and on the chips. */
+#bubble{
+  position:absolute;left:var(--bx);top:var(--by);width:352px;z-index:40;
+  background:linear-gradient(180deg,#FFFDF8,var(--cream) 30%,#EFEBE0);
+  color:var(--ink);border-radius:var(--r);padding:15px 17px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.5),0 22px 54px rgba(6,2,16,.62);
+  transform-origin:var(--ox) var(--oy);
+  animation:pop .2s cubic-bezier(.2,1.5,.4,1);
+}
+@keyframes pop{from{transform:scale(.62);opacity:0}to{transform:scale(1);opacity:1}}
+#bubble::after{content:"";position:absolute;top:var(--ty,26px);width:0;height:0;border:9px solid transparent}
+#bubble.left::after{right:-17px;border-left-color:var(--cream)}
+#bubble.right::after{left:-17px;border-right-color:var(--cream)}
+#bubble h2{margin:0;font:600 15.5px var(--display);letter-spacing:-.015em;display:flex;align-items:center;gap:8px}
+#bubble .badge{
+  font:600 10px var(--text);letter-spacing:.06em;padding:2px 8px;border-radius:var(--r-pill);
+  background:#E4DFD4;color:#4A423A;text-transform:uppercase;
+}
+#bubble .badge.blocked{background:var(--m-red);color:#fff}
+#bubble .badge.paused{background:var(--clay);color:#fff}
+#bubble .badge.active{background:var(--m-green);color:#fff}
+/* Stage is where the work sits (discover..ship), not its health: outlined, so it never reads as a status. */
+#bubble .badge.stage{background:none;color:#5B4C86;box-shadow:inset 0 0 0 1px #B9AFCF}
+#bubble .line{margin:5px 0 12px;font:400 11px var(--mono);color:var(--ink-soft)}
+#bubble .lead{font:600 10px var(--display);letter-spacing:.11em;color:#8A7F72;margin-bottom:4px}
+#bubble .say{margin:0;font-size:13.2px;line-height:1.5;overflow:hidden;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:6}
+#bubble .say.mono{font:400 12px/1.5 var(--mono);white-space:pre-wrap}
+#bubble .src{margin:12px 0 0;padding:0;list-style:none}
+#bubble .src li{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.3px}
+#bubble .src .ic{width:18px;height:18px;border-radius:5px;flex:none}
+#bubble .src .pill{
+  font:600 9.5px var(--mono);padding:2px 6px;border-radius:5px;
+  background:#E7E2D6;color:#5C5347;flex:none;min-width:34px;text-align:center;
+}
+#bubble .src .lb{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bubble .src .lb i{color:var(--ink-soft);font-style:normal}
+#bubble .flags{margin:11px 0 0;padding:0;list-style:none}
+#bubble .flags li{position:relative;padding-left:19px;margin-bottom:5px;font-size:12.3px;line-height:1.4}
+#bubble .flags li b{
+  position:absolute;left:0;top:1px;width:14px;height:14px;border-radius:50%;
+  background:var(--clay);color:#fff;font:600 9px/14px var(--text);text-align:center;
+}
+#bubble .acts{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+#bubble button{padding:8px 14px;border-radius:9px;font-size:12.5px;font-weight:600;background:var(--ink);color:var(--cream)}
+#bubble button:hover{background:#413A32}
+#bubble button.ghost{background:none;color:var(--ink-soft);box-shadow:inset 0 0 0 1px #D9D3C6}
+#bubble button.ghost:hover{background:#E9E4D9;color:var(--ink)}
+#bubble .why{margin:0;font-size:12.6px;line-height:1.5;color:var(--ink-soft)}
+
+/* -------------------------------------------------------------- full sheet */
+/* Claude's chapters: one line per session, numbered, date on the right. */
+#sheet ol.chapters{margin:0;padding-left:1.6em}
+#sheet ol.chapters li{padding:4px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+/* flex on an inner div: a flex <li> loses its list marker, i.e. the number. */
+#sheet ol.chapters .ch{display:flex;justify-content:space-between;gap:12px}
+#sheet ol.chapters li::marker{color:var(--clay);font-weight:700}
+#sheet ol.chapters .when{opacity:.6;font-size:.85em;white-space:nowrap}
+#sheet .readchat{margin-left:10px;padding:1px 9px;border-radius:7px;border:1px solid rgba(0,0,0,.15);background:#fff;font:600 11.5px system-ui,sans-serif;color:#3A2E4F;cursor:pointer}
+#sheet .readchat:hover,#sheet .readchat:focus-visible{background:#F3ECFF}
+/* A past chat, read-only. <dialog> gives the backdrop, focus trap and Esc. */
+#chat{width:min(760px,calc(100vw - 32px));max-height:82vh;padding:0;border:0;border-radius:14px;background:#FBF8F2;color:#2A2238;
+  box-shadow:0 24px 70px rgba(6,2,16,.55);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+#chat::backdrop{background:rgba(10,4,24,.55)}
+#chat header{position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:12px 16px;background:#FBF8F2;border-bottom:1px solid rgba(0,0,0,.08)}
+#chat header b{flex:1;font-size:16px}
+#chat header button{all:unset;cursor:pointer;padding:2px 10px;border-radius:7px;background:rgba(0,0,0,.07);font-weight:600}
+#chat .log{padding:14px 16px 18px;display:flex;flex-direction:column;gap:9px}
+#chat .m{max-width:86%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+#chat .m.you{align-self:flex-end;background:#D4785A;color:#fff;border-bottom-right-radius:4px}
+#chat .m.claude{align-self:flex-start;background:#fff;border:1px solid rgba(0,0,0,.08);border-bottom-left-radius:4px}
+#chat .m.tool{align-self:flex-start;padding:0 4px;font-size:12.5px;font-style:italic;opacity:.6}
+#chat .note{font-size:12.5px;opacity:.65;text-align:center}
+#sheet{
+  position:absolute;top:0;right:0;bottom:0;width:min(640px,94vw);z-index:50;
+  background:linear-gradient(180deg,#FFFDF8,var(--cream) 12%,#EFEBE0);
+  color:var(--ink);overflow-y:auto;padding:22px 26px 60px;
+  box-shadow:-26px 0 64px rgba(6,2,16,.55);animation:slide .22s ease;
+}
+@keyframes slide{from{transform:translateX(26px);opacity:0}to{transform:none;opacity:1}}
+#sheet h2{margin:0;font:600 22px var(--display);letter-spacing:-.02em}
+#sheet .close{position:absolute;top:15px;right:20px;color:var(--ink-soft);font-size:22px;line-height:1}
+#sheet .close:hover{color:var(--ink)}
+#sheet section{margin-top:22px}
+#sheet h3{margin:0 0 8px;font:600 10px var(--display);letter-spacing:.13em;color:#8A7F72}
+#sheet b.fail{color:var(--m-red)}
+#sheet .body{white-space:pre-wrap;font:400 12.4px/1.6 var(--mono);color:#4A423A}
+#sheet .prose{font-size:13.4px;line-height:1.6}
+#sheet .card{background:#FBF8F1;border:1px solid var(--rule);border-radius:10px;padding:13px 15px;margin-bottom:9px}
+#sheet .stats{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+#sheet .stat{background:#FBF8F1;border:1px solid var(--rule);border-radius:10px;padding:9px 14px;min-width:92px}
+#sheet .stat b{display:block;font:600 18px var(--display)}
+#sheet .stat span{font:400 10px var(--mono);color:var(--ink-soft)}
+#sheet ul.flags{margin:0;padding:0;list-style:none}
+#sheet ul.flags li{position:relative;padding-left:19px;margin-bottom:7px;font-size:13px;line-height:1.45}
+#sheet ul.flags li::before{content:"";position:absolute;left:2px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--clay)}
+#sheet ul.flags li.other::before{background:#C9C2B4}
+#sheet .row{display:flex;justify-content:space-between;gap:14px;padding:8px 0;font-size:12.8px;border-bottom:1px solid var(--rule)}
+#sheet .row:last-child{border-bottom:0}
+#sheet .row span{color:var(--ink-soft);font:400 11.5px var(--mono);white-space:nowrap}
+#sheet .acts{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap}
+#sheet .acts button{padding:10px 16px;border-radius:10px;font-weight:600;font-size:13px;background:var(--ink);color:var(--cream)}
+#sheet .acts button.ghost{background:none;color:var(--ink);box-shadow:inset 0 0 0 1px #D9D3C6}
+.pname{color:var(--clay-dark);font-weight:600}
+
+/* ------------------------------------------------------- toast, empty state */
+#toast{
+  position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:70;
+  background:var(--cream);color:var(--ink);padding:10px 18px;border-radius:var(--r-pill);
+  font-weight:600;font-size:13px;box-shadow:0 12px 34px rgba(6,2,16,.55);animation:pop .18s ease;
+}
+#toast.warn{background:var(--m-red);color:#fff}
+#empty{
+  position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);z-index:30;
+  text-align:center;color:rgba(239,233,247,.7);max-width:360px;
+}
+#empty b{display:block;font:600 15px var(--display);color:#fff;margin-bottom:5px}
+/* Floating legend: a table over the bottom-right of the city. <details> folds
+   it down to its title; the meter owns bottom-left, the guide top-left. */
+#legend{position:absolute;right:14px;bottom:14px;z-index:25;max-height:calc(100% - 28px);overflow:auto;
+  background:rgba(22,16,34,.94);border:1px solid rgba(255,255,255,.12);border-radius:12px;
+  box-shadow:0 12px 34px rgba(6,2,16,.45);font:400 var(--lgz,12px)/1.4 system-ui,-apple-system,Segoe UI,sans-serif;color:rgba(239,233,247,.8)}
+#legend summary{cursor:pointer;padding:8px 12px;font-weight:650;color:#EDE6DA;list-style:none;display:flex;gap:10px;align-items:center;user-select:none}
+#legend summary::-webkit-details-marker{display:none}
+#legend summary::after{content:'show';margin-left:auto;padding-left:10px;font-weight:400;font-size:11px;opacity:.6}
+#legend[open] summary::after{content:'hide'}
+#legend summary:focus-visible{outline:2px solid var(--clay-lite);outline-offset:-2px;border-radius:12px}
+#legend table{border-collapse:collapse;margin:0 12px 10px}
+#legend th{text-align:left;padding:8px 0 3px;color:#EDE6DA;font-weight:600}
+#legend td{padding:1px 0;vertical-align:middle}
+#legend td:first-child{padding-right:10px;white-space:nowrap;font-weight:600;color:#EDE6DA}
+#legend td[colspan]{font-weight:400;color:inherit}
+#legend .sw{width:.9em;height:.9em;margin-right:.55em}
+/* A- / A+ : text size, for the back row. Only while open. */
+#legend .lgz{display:flex;gap:4px;margin-left:6px}
+#legend:not([open]) .lgz{display:none}
+#legend .lgz button{all:unset;cursor:pointer;padding:1px 7px;border-radius:6px;background:rgba(255,255,255,.1);font:600 11px system-ui,sans-serif;color:#EDE6DA}
+#legend .lgz button:hover,#legend .lgz button:focus-visible{background:rgba(255,255,255,.22)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px}
+.sw.c-violet{background:var(--m-violet)}.sw.c-blue{background:var(--m-blue)}
+.sw.c-green{background:var(--m-green)}.sw.c-red{background:var(--m-red)}
+.sw.c-clay{background:var(--clay)}.sw.c-grey{background:#7C6E92}
+
+/* -------------------------------------------------------------- load-in once */
+.enter .node{animation:rise .5s cubic-bezier(.2,.8,.3,1) both;animation-delay:var(--in,0s)}
+@keyframes rise{from{opacity:0;transform:translate(-50%,-50%) translateY(12px) scale(.96)}to{opacity:1}}
+.enter #scene .plaque{animation:lift .55s cubic-bezier(.2,.8,.3,1) both;animation-delay:var(--in,0s)}
+@keyframes lift{from{opacity:0}to{opacity:1}}
+.enter .bot{animation-delay:calc(var(--delay,0s) + .7s)}
+
+@media (prefers-reduced-motion:reduce){
+  /* Bots stay visible, parked. They are workers, not decoration. */
+  .bot,.bot *{animation:none!important}
+  #scene .mod,#scene .modw,#scene .flow,#scene .floor-hot,
+  #scene .lampglow,.core-glow,.bloom{animation:none!important}
+  #scene .flow{opacity:.5}
+  #bubble,#sheet,#toast{animation:none}
+  .enter .node,.enter #scene .plaque{animation:fade .2s both}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+}
+@media (max-width:900px){
+  header{flex-wrap:wrap;gap:11px;padding:11px 14px}
+  #search{width:100%;order:9}
+}
+
+/* ------------------------------------------------- city: skyscrapers + roster */
+/* Windows are their own class so a face can be read at a glance: lit means the
+   project saw work this week, dark means it did not. Same information the
+   villager pose already carries, said again in the skyline. */
+#scene .win{fill:var(--win-dark,#2A2438)}
+#scene .win.on{fill:var(--win-lit,#F4C04E)}
+#scene .win.on.dim{fill:#B98A3E}
+#scene .tier-l{fill:var(--side-l)}
+#scene .tier-r{fill:var(--side-r)}
+#scene .tier-t{fill:var(--slabtop,#6E6482)}
+/* The parapet is where the roof colour went. It was the pitched roof's job and
+   it still has to mean the same thing, so a flat-topped tower keeps the band. */
+#scene .parapet{fill:var(--roof,var(--clay))}
+#scene .parapet-d{fill:var(--roof,var(--clay));filter:brightness(.7)}
+/* Stale state, same signal as the hut roof in index.html: outline the band that
+   carries the roof colour, never recolour it. */
+#scene .hut.stale .parapet{stroke:#FFD55A;stroke-width:1.6;stroke-dasharray:3 2;stroke-linejoin:round}
+/* Dormant blocks recede. Without this they render at full contrast and pull the
+   eye to the half of the city that needs no attention. */
+#scene .hut.cold .tier-l,#scene .hut.cold .tier-r,#scene .hut.cold .tier-t{
+  filter:brightness(.74) saturate(.55)}
+#scene .hut.cold .win{fill:#221D2E}
+#scene .mast{stroke:#9A8FB0;stroke-width:1.4;fill:none}
+#scene .jib{stroke:#F4C04E;stroke-width:1.6;fill:none}
+#scene .hook{stroke:#9A8FB0;stroke-width:1;fill:none}
+#scene .girder{stroke:#C98A4B;stroke-width:1.2;fill:none;opacity:.9}
+#scene .beacon{fill:#FF6B5A;animation:blip 1.9s ease-in-out infinite}
+@keyframes blip{0%,100%{opacity:.25}50%{opacity:1}}
+/* A crane swings. This is the single loudest "SimCity" cue in the whole scene,
+   so it is slow enough to read and small enough not to fight the villagers. */
+#scene .crane{transform-box:fill-box;transform-origin:center;animation:swing 9s ease-in-out infinite}
+@keyframes swing{0%,100%{rotate:-4deg}50%{rotate:5deg}}
+
+/* The roster is a RIGHT RAIL, not an overlay. #app becomes a two-column grid
+   under the header, so #hive is handed only the width left of the rail and
+   fit() - which already scales off hive.clientWidth - re-solves the city into
+   it. Nothing is drawn under the rail, so nothing is covered by it. */
+#app{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr)}
+#app>header{grid-column:1/-1}
+#hive{grid-column:1;grid-row:2;min-width:0}
+#roster{
+  grid-column:2;grid-row:2;width:268px;min-height:0;z-index:30;
+  display:flex;flex-direction:column;overflow:hidden;
+  font:13px/1.35 system-ui,-apple-system,Segoe UI,sans-serif;
+  background:rgba(22,16,34,.97);border-left:1px solid rgba(255,255,255,.10);
+  transition:width .24s ease;
+}
+#roster.shut{width:44px}
+#roster .rhead{
+  all:unset;box-sizing:border-box;flex:none;cursor:pointer;padding:11px 13px;font-weight:650;
+  color:#EDE6DA;display:flex;align-items:center;gap:8px;user-select:none;white-space:nowrap;
+}
+#roster .rhead:focus-visible{outline:2px solid var(--clay-lite);outline-offset:-2px}
+#roster .rhead .caret{margin-left:auto;opacity:.6;transition:rotate .18s;rotate:90deg}
+#roster.shut .rhead .caret{rotate:180deg;margin-left:0}
+#roster.shut .rl,#roster.shut .rlist{display:none}
+/* flex:1 with min-height:0 is the fix for the clipped last row: the list takes
+   whatever height the rail has left and scrolls inside it, instead of a fixed
+   max-height that ignored the header above it. */
+#roster .rlist{flex:1;min-height:0;overflow-y:auto;border-top:1px solid rgba(255,255,255,.08)}
+#roster button.r{
+  all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;
+  width:100%;padding:6px 11px;cursor:pointer;color:#D8D0E4;
+}
+#roster button.r:hover,#roster button.r:focus-visible{background:rgba(255,255,255,.07);color:#fff}
+#roster .rdot{width:8px;height:8px;border-radius:2px;flex:none}
+#roster .rnm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#roster .rmeta{opacity:.55;font-size:11px;flex:none}
+#roster .rflag{background:#D4785A;color:#1E182A;border-radius:6px;padding:0 5px;font-size:11px;font-weight:700}
+/* ---------------------------------------------- city: day/night, real clock */
+/* applySky() writes the palette onto #hive as custom properties, so every rule
+   that already reads --ground-*, --side-l/r or --slabtop follows the clock with
+   no rule of its own. The cell-top gradient is an SVG <stop>, which a variable
+   cannot reach through its presentation attribute - the CSS property can. */
+#slabtop stop:first-child{stop-color:var(--top-a,#FFFFFF)}
+#slabtop stop:last-child{stop-color:var(--top-b,#EFEAF7)}
+/* filter:opacity, not opacity: .core-glow animates its opacity, and an
+   animation would override a static opacity declaration outright. */
+#hive .bloom,#hive .core-glow{filter:opacity(var(--tod-glow,1))}
+/* Night lights every window. #hive[data-tod] carries a second ID, so this
+   outranks both `#scene .hut.cold .win` (1,3,0) and `#scene .win.on.dim`
+   (1,3,0) on the id count alone - a single-id `.night #scene .win` would not. */
+#hive[data-tod="night"] #scene .hut .win,
+#hive[data-tod="night"] #scene .hut.cold .win{fill:#FFD872}
+#hive[data-tod="night"] #scene .lampglow{fill:#FFD27A}
+
+/* ------------------------------------------------- city: avenues and traffic */
+#scene .road{fill:#2B2440}
+#scene .curb{stroke:rgba(255,255,255,.22);stroke-width:1;fill:none}
+#scene .lane{stroke:#E8C25A;stroke-width:1.2;stroke-dasharray:7 7;fill:none;opacity:.7}
+#hive[data-tod="night"] #scene .road{fill:#1A1630}
+#scene .veh{pointer-events:none}
+#scene .veh .hl{fill:#FFF1B8}
+#hive[data-tod="night"] #scene .veh .hl{fill:#FFFFFF;filter:drop-shadow(0 0 1.5px #FFE9A0)}
+
+/* -------------------------------------------- city: the RCI meter, re-mapped */
+/* SimCity's bottom-left demand meter. The three bars are DISJOINT counts of
+   projects - waiting on you, otherwise active, otherwise dormant - so they sum
+   to the project total. POP is total sessions across every project. */
+#rci{
+  position:absolute;left:16px;bottom:14px;z-index:20;display:flex;gap:13px;align-items:flex-end;
+  padding:9px 13px 8px;border-radius:10px;background:rgba(22,16,34,.84);
+  border:1px solid rgba(255,255,255,.10);font:600 10.5px var(--mono);color:#D8D0E4;
+}
+#rci .bars{display:flex;gap:6px;align-items:flex-end;height:62px}
+#rci .bar{width:18px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px}
+#rci .bar i{display:block;width:100%;border-radius:2px 2px 0 0;background:var(--c);height:calc(var(--v) * 34px + 2px)}
+#rci .bar s{text-decoration:none;opacity:.8}
+#rci .bar b{font-weight:700}
+#rci .pop{display:flex;flex-direction:column;gap:1px;padding-bottom:1px}
+#rci .pop span{opacity:.6}
+#rci .pop b{font:650 20px/1 var(--display);color:#fff}
+#rci .clock{opacity:.6;margin-top:3px}
+
+/* ------------------------------------------- city: power grid, unpowered lots */
+/* A registry entry with nothing on disk is ZONED, NEVER BUILT: bare dirt where
+   the tower would stand, stakes round it, and a streetlight that is off. */
+#scene .lot-dirt{fill:#6B4E36}
+#scene .lot-furrow{stroke:#57402C;stroke-width:1;fill:none}
+#scene .lot-edge{fill:none;stroke:#C9A86A;stroke-width:1;stroke-dasharray:3 3;opacity:.75}
+#scene .deadpole{stroke:#5C5470;stroke-width:1.6;fill:none}
+#scene .deadlamp{fill:#3A3348;stroke:#5C5470;stroke-width:.8}
+/* Tents: the canvas carries the state colour, as the parapet does on a tower. */
+#scene .tent-a{fill:var(--roof)}
+#scene .tent-b{fill:var(--roof);filter:brightness(.62)}
+#scene .tent-g{fill:var(--roof);filter:brightness(.8)}
+#scene .tent-door{fill:#1E1828}
+#scene .tent-flag{fill:var(--roof);filter:brightness(1.15)}
+#scene .hut.stale.tent .tent-a{stroke:#FFD55A;stroke-width:1.6;stroke-dasharray:3 2}
+#scene .fire{fill:#FF9A3C;filter:drop-shadow(0 0 2px #FFB347);animation:fire 1.3s ease-in-out infinite alternate}
+@keyframes fire{from{opacity:.65}to{opacity:1}}
+
+@media (prefers-reduced-motion:reduce){
+  #scene .crane,#scene .beacon,#scene .fire{animation:none}
+  #roster,#roster .rhead .caret{transition:none}
+}
+
+/* ------------------------------------------------------------ city: shine */
+/* Occupied towers: a few lit windows switch off and on, on staggered cycles.
+   nth-of-type counts every polygon in the tower group, so the pattern differs
+   per tower without any per-window state. Dormant blocks stay still. */
+#scene .hut:not(.cold) .win.on:nth-of-type(13n+4){animation:winoff 9s steps(1,end) infinite}
+#scene .hut:not(.cold) .win.on:nth-of-type(17n+9){animation:winoff 13s steps(1,end) -5s infinite}
+#scene .hut:not(.cold) .win:not(.on):nth-of-type(11n+2){animation:winon 11s steps(1,end) -3s infinite}
+@keyframes winoff{0%,64%{fill:#F4C04E}65%,100%{fill:#2A2438}}
+@keyframes winon{0%,58%{fill:#2A2438}59%,100%{fill:#F4C04E}}
+/* Night sky: stars on the sky layer, twinkling slowly. Day keeps its old haze. */
+#hive[data-tod="night"] .sky,#hive[data-tod="dusk"] .sky{
+  background:
+    radial-gradient(1.8px 1.8px at 8% 12%,#fff 50%,transparent),radial-gradient(1.6px 1.6px at 17% 31%,#fff 50%,transparent),
+    radial-gradient(1.4px 1.4px at 26% 8%,#fff 50%,transparent),radial-gradient(1.6px 1.6px at 34% 22%,#fff 50%,transparent),
+    radial-gradient(1.8px 1.8px at 43% 5%,#fff 50%,transparent),radial-gradient(1.6px 1.6px at 52% 27%,#fff 50%,transparent),
+    radial-gradient(1.5px 1.5px at 61% 11%,#fff 50%,transparent),radial-gradient(1.6px 1.6px at 70% 19%,#fff 50%,transparent),
+    radial-gradient(1.8px 1.8px at 79% 7%,#fff 50%,transparent),radial-gradient(1.6px 1.6px at 88% 24%,#fff 50%,transparent),
+    radial-gradient(1.3px 1.3px at 94% 14%,#fff 50%,transparent),radial-gradient(1.6px 1.6px at 4% 26%,#fff 50%,transparent),
+    radial-gradient(14px 14px at 86% 9%,#FFF6D8 45%,rgba(255,246,216,.25) 60%,transparent 75%);
+  animation:twinkle 6s ease-in-out infinite alternate}
+@keyframes twinkle{from{opacity:.65}to{opacity:1}}
+/* Searchlights from the tallest towers, after dark only. */
+#scene .beam{fill:rgba(255,240,190,.13);transform-box:fill-box;transform-origin:50% 100%;
+  animation:sweep 7s ease-in-out infinite alternate;display:none}
+#scene .beam.b2{animation-duration:9s;animation-delay:-4s}
+#hive[data-tod="night"] #scene .beam,#hive[data-tod="dusk"] #scene .beam{display:inline}
+@keyframes sweep{from{rotate:-28deg}to{rotate:28deg}}
+/* The blimp: the Claude bot towing the product name across the sky. */
+.blimp{position:absolute;top:7%;left:0;width:230px;height:56px;overflow:visible;pointer-events:none;z-index:5;
+  animation:fly 80s linear infinite;opacity:.92}
+@keyframes fly{from{translate:-260px 0}to{translate:calc(100vw + 40px) 0}}
+@media (prefers-reduced-motion:reduce){
+  #scene .win,#hive .sky,#scene .beam{animation:none!important}
+  .blimp{display:none}
+}
+@media (max-width:900px){#roster{display:none}}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <svg width="26" height="24" viewBox="0 0 10 9" shape-rendering="crispEdges" aria-hidden="true">
+        <g fill="#D4785A">
+          <rect x="2" y="0" width="6" height="4"/><rect x="0" y="4" width="10" height="2"/>
+          <rect x="2" y="6" width="6" height="1"/>
+          <rect x="1" y="7" width="1" height="2"/><rect x="3" y="7" width="1" height="2"/>
+          <rect x="6" y="7" width="1" height="2"/><rect x="8" y="7" width="1" height="2"/>
+        </g>
+        <g fill="#111111"><rect x="3" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/></g>
+      </svg>
+      <div>
+        <h1>Product Library</h1>
+        <div class="sub" id="tally">reading the grid</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <button class="waiting none" id="waiting" type="button"><b id="waitn">0</b> waiting on you</button>
+    <button class="navlink" id="navreport" type="button">Report</button>
+    <button class="navlink" id="navplans" type="button">Plans</button>
+    <input id="search" type="search" placeholder="Search projects  /" aria-label="Search projects" autocomplete="off">
+  </header>
+
+  <main id="hive">
+    <div class="lyr ground"></div>
+    <div class="lyr bloom"></div>
+    <div class="lyr core-glow"></div>
+    <div class="lyr vig"></div>
+    <div class="lyr sky"></div>
+    <svg class="blimp" viewBox="0 0 230 56" aria-hidden="true">
+      <!-- It flies left to right: banner and tail fins trail on the LEFT, nose leads on the right. -->
+      <path d="M120 22 L138 22" stroke="#9A8FB0" stroke-width="1"/>
+      <rect x="2" y="12" width="118" height="20" rx="3" fill="#EDE6DA"/>
+      <text x="61" y="26.5" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="11" font-weight="700" fill="#2A1E3A">PRODUCT LIBRARY</text>
+      <path d="M144 22 L126 7 L126 37 Z" fill="#B8603F"/>
+      <ellipse cx="180" cy="22" rx="48" ry="18" fill="#D4785A"/>
+      <ellipse cx="184" cy="16" rx="36" ry="7" fill="#E59A7E"/>
+      <path d="M164 38 L170 44 M196 38 L190 44" stroke="#9A8FB0" stroke-width="1"/>
+      <g transform="translate(169 37) scale(2.2)">
+        <g>
+          <g fill="#D4785A"><rect x="2" y="0" width="6" height="4"/><rect x="0" y="4" width="9" height="2"/><rect x="2" y="6" width="6" height="1"/></g>
+          <g fill="#111111"><rect x="3" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/></g>
+        </g>
+      </g>
+    </svg>
+    <svg id="scene" aria-hidden="true">
+      <defs>
+        <linearGradient id="slabtop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EFEAF7"/>
+        </linearGradient>
+        <linearGradient id="hotline" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#8B5CF6" stop-opacity="0"/>
+          <stop offset=".5" stop-color="#FF6FD8"/>
+          <stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="slabshadow" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#06010F" stop-opacity=".55"/>
+          <stop offset="1" stop-color="#06010F" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="grainf"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3"/></filter>
+      </defs>
+    </svg>
+    <svg class="lyr grain" aria-hidden="true"><rect width="100%" height="100%" filter="url(#grainf)"/></svg>
+    <div id="nodes"></div>
+    <!-- ponytail: <details> is the minimise/maximise; JS only remembers which. -->
+    <details id="legend" open>
+      <summary>Legend<span class="lgz"><button type="button" data-z="-1" aria-label="Smaller legend">A&minus;</button><button type="button" data-z="1" aria-label="Bigger legend">A+</button></span></summary>
+      <table>
+        <tr><th colspan="2">Roof colour: what it needs</th></tr>
+        <tr><td colspan="2"><span class="sw c-clay"></span>waiting on you</td></tr>
+        <tr><td colspan="2"><span class="sw c-red"></span>blocked on someone else</td></tr>
+        <tr><td colspan="2"><span class="sw c-violet"></span>has a note (session-state.md)</td></tr>
+        <tr><td colspan="2"><span class="sw c-blue"></span>git only, no note</td></tr>
+        <tr><td colspan="2"><span class="sw c-green"></span>Claude chats only</td></tr>
+        <tr><td colspan="2"><span class="sw c-grey"></span>nothing on disk yet</td></tr>
+        <tr><th colspan="2">Building: how far along</th></tr>
+        <tr><td>lot</td><td>planned, never started</td></tr>
+        <tr><td>tent</td><td>just started</td></tr>
+        <tr><td>low-rise</td><td>finding its feet</td></tr>
+        <tr><td>tower</td><td>lots of work</td></tr>
+        <tr><td>crane</td><td>active, with a note</td></tr>
+        <tr><td>dashed roof</td><td>STALE: the note is older than the code</td></tr>
+        <tr><td>front row</td><td>touched in the last 30 days</td></tr>
+      </table>
+    </details>
+  </main>
+</div>
+
+<dialog id="chat" aria-label="Past chat"><header><b></b><button type="button" data-close>Close</button></header><div class="log"></div></dialog>
+
+<script nonce="{{NONCE}}">
+"use strict";
+// Only ever present in a page the server itself rendered, so a request carrying
+// it cannot have come from another origin. Distinct from the CSP nonce, which
+// is minted fresh per response.
+const TOKEN = "{{TOKEN}}";
+// A restarted server mints a new token, so an open tab calls with a dead one and
+// gets 403 forever: the poll, and every sheet (Full view said "Unknown project").
+// Reload once to pick up the new token, and never settle, so no caller renders
+// the error meanwhile. Only after a first render, so a page that never had a
+// good token cannot reload-loop. The reload keeps the path: /p/<id> reopens.
+const api = (path, init) => fetch(path, Object.assign({}, init, {
+  headers: Object.assign({ "X-Library-Token": TOKEN }, (init || {}).headers || {}),
+})).then((res) => {
+  if (res.status !== 403 || !entered) return res;
+  location.reload();
+  return new Promise(() => {});
+});
+
+const SVGNS = "http://www.w3.org/2000/svg";
+const DAY = 86400000;
+const COS30 = Math.cos(Math.PI / 6), SIN30 = Math.sin(Math.PI / 6);
+
+const hive = document.getElementById("hive");
+const scene = document.getElementById("scene");
+const nodesEl = document.getElementById("nodes");
+const search = document.getElementById("search");
+
+let PROJECTS = [];
+let openId = null;
+let entered = false;
+
+/* ------------------------------------------------------------------ helpers */
+
+// Everything here came out of a file on disk. CSP already blocks an injected
+// <script>, but escaping is the actual fix.
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function ago(iso) {
+  if (!iso) return "never";
+  const mins = (Date.now() - new Date(iso)) / 60000;
+  if (mins < 60) return Math.max(1, Math.round(mins)) + "m ago";
+  if (mins < 1440) return Math.round(mins / 60) + "h ago";
+  const d = Math.round(mins / 1440);
+  return d < 30 ? d + "d ago" : new Date(iso).toISOString().slice(0, 10);
+}
+function tier(p) {
+  if (!p.last_activity) return 3;
+  const age = Date.now() - new Date(p.last_activity);
+  return age <= 7 * DAY ? 1 : age <= 30 * DAY ? 2 : 3;
+}
+// Owner decision 2026-09-09: group the field into two plates rather than three depth
+// tiers. Anything touched inside 30 days is live work and belongs together at
+// the front; everything else is one dormant plate behind it. tier() still
+// drives colour, haze, chip class and the header tally, so it is untouched.
+const band = (p) => tier(p) === 3 ? 1 : 0;
+const BAND_GAP = 1.2;        // blank comb rows between the two districts
+let VACANT = [];             // comb cells with no project behind them
+
+// Owner decision 2026-09-09: a hive. Cells are hexagons that interlock, so they are
+// connected by construction rather than by drawn links.
+//
+// The trick that keeps every existing 3D helper working: pick the world
+// lattice so that ONE WORLD UNIT PROJECTS TO ONE HEX RADIUS. Writing a cell
+// centre as
+//     wx = a + b,   wy = b - a
+// makes iso() give screen x = 1.732*a*SC and screen y = b*SC, so `a` is a pure
+// lateral index and `b` a pure depth one. A pointy-top hexagon squashed to
+// 0.58 is 1.732 radii wide and 1.16 tall, and a honeycomb of them steps 1.0 in
+// `a`, 0.87 in `b`, with every odd row shifted half a cell. Those are exactly
+// the numbers below, so the comb tessellates with no gaps and no overlaps.
+const A_STEP = 1.0, B_STEP = 0.87, HEX_W = 0.866, HEX_H = 0.58;
+
+// Cell thickness and hut size are in world units, which are now hex radii, so
+// everything here is about a quarter of the old square-tile figures.
+const PLOT_T = { 1: 0.16, 2: 0.13, 3: 0.10 };
+const VAC_T = 0.075;
+
+// (lat, dep) are fractions of a cell's half width and half height, so the same
+// pair means the same spot on every cell. Inverting the projection:
+//   lateral px = (dx-dy)*COS30*SC   and   depth px = (dx+dy)*SIN30*SC
+function zoneXY(p, lat, dep) {
+  const d = (HEX_H / 0.5) * dep;
+  return [p._x0 + (lat + d) / 2, p._y0 + (d - lat) / 2];
+}
+const zone = (p, lat, dep, z) => {
+  const [x, y] = zoneXY(p, lat, dep);
+  return iso(x, y, z);
+};
+const mb = (b) => b >= 1048576 ? Math.round(b / 1048576) + "MB"
+  : b > 0 ? Math.max(1, Math.round(b / 1024)) + "KB" : "0";
+
+function el(tag, cls, attrs) {
+  const n = document.createElementNS(SVGNS, tag);
+  if (cls) n.setAttribute("class", cls);
+  for (const k in (attrs || {})) n.setAttribute(k, attrs[k]);
+  return n;
+}
+function toast(msg, warn) {
+  document.getElementById("toast")?.remove();
+  const t = document.createElement("div");
+  t.id = "toast"; t.setAttribute("aria-live", "polite");
+  if (warn) t.className = "warn";
+  t.textContent = msg;
+  hive.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
+
+/* --------------------------------------------------------------- projection */
+
+// 2.5D: project world coordinates to screen and then draw ordinary flat shapes.
+// A CSS 3D transform on a container would blur small text, fight z-order, and
+// lay the sprites down flat. Projecting keeps labels crisp and bots upright.
+let SC = 1, OX = 0, OY = 0;
+const iso = (x, y, z) => [
+  (x - y) * COS30 * SC + OX,
+  (x + y) * SIN30 * SC - z * SC + OY,
+];
+
+/* ------------------------------------------------------------------- layout */
+
+// A comb row advances only 0.87 in depth but a full 1.73 laterally, so an
+// equal count of rows and columns comes out tall and narrow. Bias to width.
+function combDims(n) {
+  // Measured, not guessed. At 1600x1000 a bias of 3.6 and of 3.0 both settle
+  // SC near 113 and 2.6 drops it to 100, so the wide case cannot tell 3.6 and
+  // 3.0 apart. The NARROW case can: at 820px, 3.0 puts two labels into each
+  // other and 3.6 does not. Hence 3.6.
+  const k = Math.max(0.28, Math.min(1, hive.clientWidth / 1560));
+  // Skyscrapers need height, so the comb is squarer than it was for huts: at
+  // 1920x1080 with 32 live projects, 3.6 gave 11x3 at SC 77 and 2.4 gives 9x4
+  // at SC 90 (measured with the sample).
+  const c = Math.max(1, Math.round(Math.sqrt(n * 2.4) * k));
+  return [c, Math.max(1, Math.ceil(n / c))];
+}
+
+function place(list) {
+  VACANT = [];
+  const bands = [[], []];
+  list.forEach((p) => bands[band(p)].push(p));
+  let row0 = 0;
+  // Back to front, so painter order and DOM order agree: dormant district first.
+  [1, 0].forEach((bi) => {
+    const items = bands[bi];
+    if (!items.length) return;
+    const [C, R] = combDims(items.length);
+    const slots = [];
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) slots.push([c, r]);
+    // Nearest row first, so a district that does not fill its comb loses cells
+    // from the BACK row, where a short row reads as the edge of the hive. Any
+    // other order bites a notch out of the front, which looks like a bug.
+    slots.sort((x, y) => (y[1] - x[1]) || (x[0] - y[0]));
+    const fresh = items.slice().sort((a, b) =>
+      new Date(b.last_activity || 0) - new Date(a.last_activity || 0));
+    const put = (o, c, r) => {
+      // Odd rows shift half a cell: that half step is what interlocks the
+      // hexagons into a comb instead of stacking them in a square grid.
+      const a = (c - (C - 1) / 2) * A_STEP + ((r & 1) ? A_STEP / 2 : 0);
+      const b = (row0 + r) * B_STEP;
+      o._x0 = a + b; o._y0 = b - a; o._w = 1;
+    };
+    fresh.forEach((p, i) => {
+      const [c, r] = slots[i];
+      p._t = tier(p); p._b = bi;
+      put(p, c, r);
+    });
+    slots.slice(fresh.length).forEach(([c, r]) => {
+      const o = { vacant: true, _t: bi === 1 ? 3 : 2, _b: bi };
+      put(o, c, r);
+      VACANT.push(o);
+    });
+    row0 += R + BAND_GAP;
+  });
+  return list;
+}
+
+// Measured in units of SC rather than pixels, because a cell's own size and
+// the huts standing on it both scale with SC, so the extent cannot be found
+// before SC is known. Solving it in unit space removes the circularity.
+function fit(list) {
+  const w = hive.clientWidth, h = hive.clientHeight;
+  SC = 1; OX = 0; OY = 0;
+  let minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
+  const HEAD = 3.35;   // tallest live tower (2.55) + parapet + crane
+  list.concat(VACANT).forEach((p) => {
+    const ux = (p._x0 - p._y0) * COS30, uy = (p._x0 + p._y0) * SIN30;
+    minx = Math.min(minx, ux - HEX_W - 0.05);
+    maxx = Math.max(maxx, ux + HEX_W + 0.05);
+    // Dormant blocks are low-rise (drawHouse caps them near 0.5), so only the
+    // live comb needs tower headroom. Reserving it everywhere wasted the top
+    // third of the screen above the back row.
+    miny = Math.min(miny, uy - HEX_H - (p._b === 1 ? 1.0 : HEAD));
+    // city: the front avenue runs below the live comb, so reserve room for it.
+    maxy = Math.max(maxy, uy + (p._b === 0 ? ROAD_REACH : HEX_H + 0.1));
+  });
+  // padY carries the label, which is a fixed pixel size and does not scale.
+  const padX = 52, padY = 26;
+  SC = Math.min((w - padX * 2) / Math.max(0.1, maxx - minx),
+                (h - padY * 2) / Math.max(0.1, maxy - miny));
+  SC = Math.max(8, Math.min(SC, 120));
+  OX = w / 2 - ((minx + maxx) / 2) * SC;
+  OY = h / 2 - ((miny + maxy) / 2) * SC;
+  const rci = document.getElementById("rci");
+  if (rci && rci.offsetWidth) {
+    const mw = rci.offsetLeft + rci.offsetWidth + 10, mh = h - rci.offsetTop + 10;
+    const cells = list.concat(VACANT).map((p) => [(p._x0 - p._y0) * COS30, (p._x0 + p._y0) * SIN30]);
+    const solve = (gx, gy) => {
+      const s = Math.max(8, Math.min(120, Math.min((w - padX * 2 - gx) / Math.max(0.1, maxx - minx),
+                                                  (h - padY * 2 - gy) / Math.max(0.1, maxy - miny))));
+      return { s: s, ox: (w + gx) / 2 - ((minx + maxx) / 2) * s, oy: (h - gy) / 2 - ((miny + maxy) / 2) * s };
+    };
+    const hits = (o) => cells.some(([ux, uy]) =>
+      (ux - HEX_W) * o.s + o.ox < mw && (uy + HEX_H) * o.s + o.oy > h - mh);
+    if (hits({ s: SC, ox: OX, oy: OY })) {
+      const gx = Math.max(0, mw - padX), gy = Math.max(0, mh - padY);
+      const ok = [solve(gx, 0), solve(0, gy), solve(gx, gy)].filter((o) => !hits(o));
+      if (ok.length) {
+        const o = ok.reduce((a, b) => (b.s > a.s ? b : a));
+        SC = o.s; OX = o.ox; OY = o.oy;
+      }
+    }
+  }
+}
+
+/* -------------------------------------------------------------------- draw */
+
+// The three faces of an axis-aligned box that a viewer can see in this
+// projection: the lit roof, the front-left wall, the front-right wall. Every
+// solid in the scene is built from this, so the lighting stays consistent.
+function boxFaces(x0, y0, x1, y1, z0, z1) {
+  const tl = iso(x0, y0, z1), tr = iso(x1, y0, z1),
+        br = iso(x1, y1, z1), bl = iso(x0, y1, z1);
+  const bl0 = iso(x0, y1, z0), br0 = iso(x1, y1, z0), tr0 = iso(x1, y0, z0);
+  return {
+    tl: tl, tr: tr, br: br, bl: bl, base: br0,
+    top: pts([tl, tr, br, bl]),
+    left: pts([bl, br, br0, bl0]),
+    right: pts([tr, br, br0, tr0]),
+  };
+}
+
+function haze(g, f, t) {
+  const a = t === 2 ? 0.16 : 0.34;
+  const hz = el("polygon", "haze", { points: f.top });
+  hz.style.setProperty("--haze-col", `rgba(110,42,133,${a})`);
+  g.appendChild(hz);
+}
+
+function drawFloor() {
+  const g = el("g", "floorgrid");
+  // Sized off the actual plates. The old fixed span of 26 stopped short of the
+  // front plate, which now reaches roughly 45 on each axis, so the live tiles
+  // stood on bare ground with no grid beneath them.
+  let span = 6;
+  PROJECTS.concat(VACANT).forEach((p) => {
+    span = Math.max(span, Math.abs(p._x0) + 4, Math.abs(p._y0) + 4);
+  });
+  // One world unit is now a whole hex radius, so a step of 2 would draw grid
+  // lines hundreds of pixels apart. Pick the step to land near 44px instead.
+  const st = Math.max(0.25, Math.round((44 / SC) * 4) / 4);
+  span = Math.ceil(span / st) * st;
+  for (let i = -span; i <= span; i += st) {
+    const a = iso(i, -span, 0), b = iso(i, span, 0);
+    const c = iso(-span, i, 0), d = iso(span, i, 0);
+    g.appendChild(el("path", "floor", { d: `M${a[0]} ${a[1]}L${b[0]} ${b[1]}` }));
+    g.appendChild(el("path", "floor", { d: `M${c[0]} ${c[1]}L${d[0]} ${d[1]}` }));
+  }
+  // The warm streak was pinned to world x -10..14, which the two-plate layout
+  // left behind completely. Lay it on the open floor just IN FRONT of the live
+  // plate instead, where no tile covers it. A line of constant x+y is exactly
+  // a screen-horizontal line in this projection.
+  const live = PROJECTS.filter((p) => p._b === 0);
+  if (live.length) {
+    const near = Math.max(...live.map((p) => p._x0 + p._y0)) + HEX_H * 2 + 0.5;
+    const L = 6;
+    for (let k = near; k <= near + 2.4; k += 0.5) {
+      const a = iso(k / 2 - L, k / 2 + L, 0), b = iso(k / 2 + L, k / 2 - L, 0);
+      g.appendChild(el("path", "floor-hot", { d: `M${a[0]} ${a[1]}L${b[0]} ${b[1]}` }));
+    }
+  }
+  return g;
+}
+
+const pts = (arr) => arr.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+
+// A slab is three polygons: a light top face plus two darker side faces. That
+// is where the thickness in make.com's Grid comes from.
+// One hut per project. The box is sized off the plot and its height off how
+// much work the project actually holds, so a long-running project has a real
+// house and a scratch folder has a shed - which is what makes the skyline
+// uneven instead of a row of identical squares. All four roof faces are drawn
+// back to front, which is cheaper to reason about than deciding which two of
+// them the current camera can see.
+// Owner decision 2026-09-09: the roof colour has to mean something. It carries the same
+// palette as the silos, so a cell's roof and its blocks agree about what the
+// project is. Ordered by what you would want to see first from across the room.
+function roofOf(p) {
+  if (p.waiting_count) return "var(--clay)";      // a decision waiting on you
+  if (p.blocker_count) return "var(--m-red)";     // blocked, but not on you
+  if (p.has_state) return "var(--m-violet)";      // a live session-state file
+  if (p.branch) return "var(--m-blue)";           // a git branch and no state
+  if (p.sessions) return "var(--m-green)";        // transcripts only
+  return "#7C6E92";                               // registry entry, nothing behind it
+}
+
+// Power grid, approved 2026-09-23. The grey-roof registry stubs - zero
+// transcripts, no session-state, no branch, nothing waiting and nothing blocked -
+// are UNPOWERED EMPTY LOTS. This settles the fold-or-filter question open since
+// 2026-09-09 by doing neither: the lot keeps its cell and its label, and reads
+// as zoned-never-built, which is exactly what a registry entry with nothing
+// behind it is. Keyed off roofOf() rather than a copy of its predicate, so the
+// lot and the colour it replaces can never disagree.
+const LOT_ROOF = "#7C6E92";
+const isLot = (p) => roofOf(p) === LOT_ROOF;
+
+function drawLot(g, p, z0) {
+  const lot = el("g", "lot");
+  const s = 0.34;
+  const [cx, cy] = zoneXY(p, -0.46, -0.30);           // where the tower would stand
+  const x0 = cx - s / 2, y0 = cy - s / 2, x1 = cx + s / 2, y1 = cy + s / 2;
+  const f = boxFaces(x0, y0, x1, y1, z0, z0 + 0.012);
+  lot.appendChild(el("polygon", "lot-dirt", { points: f.top }));
+  // Furrows: two graded lines across the dirt, so it reads as a plot rather
+  // than a brown sticker.
+  [0.33, 0.66].forEach((k) => {
+    const a = iso(x0 + s * k, y0, z0 + 0.012), b = iso(x0 + s * k, y1, z0 + 0.012);
+    lot.appendChild(el("path", "lot-furrow", { d: "M" + a[0] + " " + a[1] + "L" + b[0] + " " + b[1] }));
+  });
+  lot.appendChild(el("polygon", "lot-edge", { points: f.top }));
+  // The dead streetlight stands in the silo yard's spot, which a lot never
+  // uses - sourcesOf() is empty for exactly these projects - so it cannot
+  // collide with the villager at lat 0 or the label below it.
+  const b = zone(p, 0.50, -0.25, z0), t = zone(p, 0.50, -0.25, z0 + 0.34);
+  lot.appendChild(el("path", "deadpole", { d: "M" + b[0] + " " + b[1] + "L" + t[0] + " " + t[1] }));
+  lot.appendChild(el("ellipse", "deadlamp", {
+    cx: t[0], cy: t[1], rx: Math.max(2.2, SC * 0.03), ry: Math.max(1.8, SC * 0.024) }));
+  g.appendChild(lot);
+}
+
+// Growth ladder: empty lot, tent, low-rise, tower. A TENT is a project that has
+// only just started: still defining what it is, or no checkpoint yet and a
+// handful of sessions. Dormant ones are never tents - a month untouched means
+// it is no longer "just started", so it keeps its low-rise.
+const isTent = (p) => p._t !== 3 && (p.stage === "define" || (!p.has_state && (p.sessions || 0) <= 3));
+
+function drawTent(g, p, z0) {
+  const t = el("g", "hut tent" + (p.drift ? " stale" : ""));
+  t.style.setProperty("--roof", roofOf(p));
+  const s = 0.30, h = 0.24;
+  const [cx, cy] = zoneXY(p, -0.46, -0.30);
+  const x0 = cx - s / 2, x1 = cx + s / 2, y0 = cy - s * 0.4, y1 = cy + s * 0.4, ym = cy;
+  // Back slope first, then the slope and gable facing the viewer.
+  t.appendChild(el("polygon", "tent-b", { points: pts([iso(x0, y0, z0), iso(x1, y0, z0), iso(x1, ym, z0 + h), iso(x0, ym, z0 + h)]) }));
+  t.appendChild(el("polygon", "tent-a", { points: pts([iso(x0, y1, z0), iso(x1, y1, z0), iso(x1, ym, z0 + h), iso(x0, ym, z0 + h)]) }));
+  t.appendChild(el("polygon", "tent-g", { points: pts([iso(x1, y0, z0), iso(x1, y1, z0), iso(x1, ym, z0 + h)]) }));
+  t.appendChild(el("polygon", "tent-door", { points: pts([iso(x1, ym - s * 0.13, z0), iso(x1, ym + s * 0.13, z0), iso(x1, ym, z0 + h * 0.62)]) }));
+  // Flag on the ridge: the same state colour, so a camp reads like a tower's parapet.
+  const f0 = iso(x0, ym, z0 + h), f1 = iso(x0, ym, z0 + h + 0.20);
+  t.appendChild(el("path", "mast", { d: "M" + f0[0] + " " + f0[1] + "L" + f1[0] + " " + f1[1] }));
+  const fx = iso(x0 - 0.10, ym + 0.10, z0 + h + 0.17), fb = iso(x0, ym, z0 + h + 0.14);
+  t.appendChild(el("polygon", "tent-flag", { points: pts([f1, fx, fb]) }));
+  // Campfire in front of the door: somebody is still out here working on it.
+  const [fcx, fcy] = iso(x1 + 0.09, ym + 0.03, z0);
+  t.appendChild(el("ellipse", "fire", { cx: fcx, cy: fcy, rx: Math.max(1.6, SC * 0.022), ry: Math.max(1.2, SC * 0.014) }));
+  g.appendChild(t);
+}
+
+function drawHouse(g, p, z0) {
+  if (isLot(p)) { drawLot(g, p, z0); return; }
+  if (isTent(p)) { drawTent(g, p, z0); return; }
+  // POC 2026-09-22: the pitched-roof hut is now a SKYSCRAPER. Everything that
+  // carried meaning before still carries it - the roof colour moved to the
+  // parapet band, and height still scales with how much work the project holds -
+  // but the scale changed from "shed vs house" to "low-rise vs tower", which is
+  // what makes a skyline instead of a village.
+  const s = p._t === 3 ? 0.30 : 0.34;
+  const [hcx, hcy] = zoneXY(p, -0.46, -0.30);
+  const hut = el("g", "hut" + (p._t === 3 ? " cold" : "") + (p.drift ? " stale" : ""));
+  hut.style.setProperty("--roof", roofOf(p));
+
+  // Work volume, log-scaled. sessions dominate, prompts refine, so a 27-session
+  // workhorse towers over a registry stub without a one-session folder vanishing.
+  // The CAP is per tier, not shared, and that is the whole point. A first pass
+  // used one cap for everyone, so a dormant folder with 30 old sessions grew a
+  // taller, brighter tower than a project worked on this morning - the skyline
+  // argued against the roof colour, the villager pose and the comb it sits in.
+  // Downtown is the live comb. Dormant is low-rise, and stays low-rise however
+  // much history it has.
+  // p.prompts is an ARRAY of prompt strings, not a count. `sessions*4 + p.prompts`
+  // string-concatenates, Math.log10 of that is NaN, and a NaN height draws a
+  // polygon with "NaN" in its points - which is not an error, just an invisible
+  // building. Every live tower vanished and the dormant ones looked fine, because
+  // an empty array concatenates to a number that happens to be plausible.
+  const work = (p.sessions || 0) * 4 + (p.prompts || []).length;
+  const base = p._t === 1 ? 0.55 : p._t === 2 ? 0.40 : 0.20;
+  const cap = p._t === 1 ? 2.00 : p._t === 2 ? 1.05 : 0.26;
+  let H = base + Math.min(cap, Math.log10(1 + work) * 0.78);
+  // Never let a bad field reach the geometry as NaN again. A tower that is wrong
+  // is a bug you can see; a tower that is absent looks like a design choice.
+  if (!isFinite(H)) { console.warn("Product Library: non-finite tower height for " + p.id); H = base; }
+
+  // Under construction: an ACTIVE project with a live session-state file. The
+  // top tier is drawn as bare girders with a crane over it, which is the
+  // SimCity read - this block is still going up. Tied to real state, so it is
+  // information and not decoration.
+  const building = p._t === 1 && !!p.has_state;
+
+  // Setbacks. Three tiers, each narrower, which is what separates a tower from
+  // an extruded box. Fractions of H so short buildings stay stubby.
+  const cuts = [[0, 0.58, 1.00], [0.58, 0.86, 0.76], [0.86, 1.00, 0.52]];
+  const lit = p._t === 1 ? "on" : p._t === 2 ? "on dim" : "";
+
+  cuts.forEach(function (c, ti) {
+    const w = s * c[2];
+    const x0 = hcx - w / 2, y0 = hcy - w / 2, x1 = hcx + w / 2, y1 = hcy + w / 2;
+    const za = z0 + H * c[0], zb = z0 + H * c[1];
+    const topTier = ti === cuts.length - 1;
+    if (building && topTier) {
+      // Girder cage: verticals at the corners, one floor line. No solid faces,
+      // so you see straight through the unfinished floor.
+      [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].forEach(function (cn) {
+        const a = iso(cn[0], cn[1], za), b = iso(cn[0], cn[1], zb);
+        hut.appendChild(el("path", "girder", { d: "M" + a[0] + " " + a[1] + "L" + b[0] + " " + b[1] }));
+      });
+      const mid = boxFaces(x0, y0, x1, y1, za, (za + zb) / 2);
+      hut.appendChild(el("polygon", "girder", { points: mid.top }));
+      return;
+    }
+    const f = boxFaces(x0, y0, x1, y1, za, zb);
+    hut.appendChild(el("polygon", "tier-l", { points: f.left }));
+    hut.appendChild(el("polygon", "tier-r", { points: f.right }));
+    hut.appendChild(el("polygon", "tier-t", { points: f.top }));
+
+    // Windows. Rows are derived from the tier's own height so a tall tier gets
+    // more floors - the eye reads floor count as scale without being told.
+    const rows = Math.max(1, Math.round((zb - za) / 0.115));
+    const cols = w > 0.26 ? 3 : 2;
+    const pad = 0.16, gap = (1 - pad * 2);
+    for (let r = 0; r < rows; r++) {
+      const ra = za + (zb - za) * (pad + gap * (r + 0.18) / rows);
+      const rb = za + (zb - za) * (pad + gap * (r + 0.78) / rows);
+      for (let cq = 0; cq < cols; cq++) {
+        const ca = pad + gap * (cq + 0.18) / cols, cb = pad + gap * (cq + 0.78) / cols;
+        // A deterministic checker, never Math.random: the same project must draw
+        // the same tower on every repaint, and layout() repaints twice a minute.
+        const on = lit && ((r * 3 + cq * 5 + (p.id.length % 4)) % 4 !== 0);
+        const cls = "win" + (on ? " " + lit : "");
+        const lx0 = x0 + w * ca, lx1 = x0 + w * cb;
+        hut.appendChild(el("polygon", cls, { points: pts([
+          iso(lx0, y1, ra), iso(lx1, y1, ra), iso(lx1, y1, rb), iso(lx0, y1, rb)]) }));
+        const ly0 = y0 + w * ca, ly1 = y0 + w * cb;
+        hut.appendChild(el("polygon", cls, { points: pts([
+          iso(x1, ly0, ra), iso(x1, ly1, ra), iso(x1, ly1, rb), iso(x1, ly0, rb)]) }));
+      }
+    }
+    // Parapet: a thin band at the top of each tier, in the project's state
+    // colour. This is where the pitched roof's meaning went.
+    const pf = boxFaces(x0, y0, x1, y1, zb, zb + 0.035);
+    hut.appendChild(el("polygon", "parapet-d", { points: pf.left }));
+    hut.appendChild(el("polygon", "parapet-d", { points: pf.right }));
+    hut.appendChild(el("polygon", "parapet", { points: pf.top }));
+  });
+
+  const topZ = z0 + H + 0.035;
+  if (building) {
+    // Tower crane: mast above the girder cage, jib across it, hook hanging.
+    const cr = el("g", "crane");
+    const m0 = iso(hcx, hcy, topZ), m1 = iso(hcx, hcy, topZ + 0.42);
+    cr.appendChild(el("path", "mast", { d: "M" + m0[0] + " " + m0[1] + "L" + m1[0] + " " + m1[1] }));
+    const j0 = iso(hcx - s * 0.75, hcy, topZ + 0.40), j1 = iso(hcx + s * 1.25, hcy, topZ + 0.40);
+    cr.appendChild(el("path", "jib", { d: "M" + j0[0] + " " + j0[1] + "L" + j1[0] + " " + j1[1] }));
+    const h0 = iso(hcx + s * 0.85, hcy, topZ + 0.40), h1 = iso(hcx + s * 0.85, hcy, topZ + 0.12);
+    cr.appendChild(el("path", "hook", { d: "M" + h0[0] + " " + h0[1] + "L" + h1[0] + " " + h1[1] }));
+    hut.appendChild(cr);
+  } else if (p._t === 1) {
+    // Antenna and a blinking beacon, live projects only. Nothing blinks in a
+    // quarter of the city nobody has visited for a month.
+    const a0 = iso(hcx, hcy, topZ), a1 = iso(hcx, hcy, topZ + 0.26);
+    hut.appendChild(el("path", "mast", { d: "M" + a0[0] + " " + a0[1] + "L" + a1[0] + " " + a1[1] }));
+    hut.appendChild(el("circle", "beacon", { cx: a1[0], cy: a1[1], r: Math.max(1.6, SC * 0.022) }));
+  }
+  // Searchlights on the skyline's biggest towers. Shown after dark by CSS.
+  if (p._t === 1 && H > 1.9) {
+    const [bx, by] = iso(hcx, hcy, topZ), L = SC * 2.6, Wd = SC * 0.34;
+    hut.appendChild(el("polygon", "beam" + (p.id.length % 2 ? " b2" : ""), { points: pts([
+      [bx - 1, by], [bx + 1, by], [bx + Wd, by - L], [bx - Wd, by - L]]) }));
+  }
+  g.appendChild(hut);
+  // A lamp, but only where work is live. Nothing is lit in a quarter of the
+  // hive that nobody has visited for a month.
+  if (p._t === 1) {
+    const lp = zone(p, 0.20, 0.06, z0);
+    const rr = Math.max(9, SC * 0.17);
+    g.appendChild(el("ellipse", "lampglow", { cx: lp[0], cy: lp[1], rx: rr, ry: rr * 0.46 }));
+    g.appendChild(el("ellipse", "lamp", {
+      cx: lp[0], cy: lp[1] - 1, rx: Math.max(2, SC * 0.028), ry: Math.max(1.6, SC * 0.023),
+    }));
+  }
+}
+
+// A cell is a hexagonal prism whose screen circumradius is exactly SC, because
+// the lattice was chosen so one world unit projects to one hex radius. Its top
+// face sits at z = thickness and the walls drop to the ground, which is the
+// same three-face construction the silos and the huts use.
+function drawPlaque(p, step) {
+  const g = el("g", "plaque" + (p.vacant ? " vacant" : ""));
+  // No data-id on a vacant cell, so a click on empty comb finds no project and
+  // falls through to the same path as a click on the ground.
+  if (!p.vacant) g.setAttribute("data-id", p.id);
+  g.style.setProperty("--in", (step * 0.022).toFixed(2) + "s");
+
+  const tz = p.vacant ? VAC_T : (PLOT_T[p._t] || 0.12);
+  const top = iso(p._x0, p._y0, tz);
+  const hx = hex3d(top[0], top[1], SC * 0.995, tz * SC);
+  g.appendChild(el("polygon", "cell-l", { points: hx.left }));
+  g.appendChild(el("polygon", "cell-r", { points: hx.right }));
+  g.appendChild(el("polygon", "cell-t" + (p.vacant ? " vac" : ""), { points: hx.top }));
+  g.appendChild(el("polygon", "cell-rim", { points: hx.top }));
+
+  const cx = top[0], cy = top[1];
+  p._cx = cx; p._cy = cy;
+  if (p.vacant) return g;
+  if (p._t > 1) haze(g, { top: hx.top }, p._t);
+
+  drawHouse(g, p, tz);
+  drawGraph(g, p, tz);
+  // Zones inside the cell: hut hard left, silos hard right, the villager dead
+  // centre between them, and the label in the clear lower half. The villager's
+  // own spot is NOT cached in screen pixels any more - homeW() derives it in
+  // world coordinates from the same zoneXY(0, -0.10), because Phase 2 has to
+  // re-project a villager that may be nowhere near home when layout() runs.
+  const ch = zone(p, 0.00, 0.34, tz);
+  p._chipX = ch[0]; p._chipY = ch[1];
+  return g;
+}
+
+// The centre module is the project; every satellite is a state source that
+// actually exists on disk for it. Blockers are red. This is the make.com
+// module graph pointing at real mechanism rather than decoration.
+function sourcesOf(p) {
+  const out = [];
+  if (p.has_state) out.push({ k: "state", c: "var(--m-violet)", pill: "STATE", label: "session-state.md" });
+  if (p.branch) out.push({ k: "git", c: "var(--m-blue)", pill: "GIT", label: p.branch });
+  if (p.sessions) out.push({ k: "tx", c: "var(--m-green)", pill: "JSONL", label: p.sessions + (p.sessions === 1 ? " session" : " sessions") });
+  if (p.blocker_count) out.push({ k: "block", c: "var(--m-red)", pill: "OPEN", label: p.blocker_count + (p.blocker_count === 1 ? " blocker" : " blockers") });
+  return out;
+}
+
+// Vertices at 30 + 60i degrees with y squashed to 0.58, which is the same
+// foreshortening the slabs use. v[2],v[1],v[0] are the left, bottom and right
+// vertices, so those two edges are the only walls a viewer can see.
+function hexv(cx, cy, r) {
+  const a = [];
+  for (let i = 0; i < 6; i++) {
+    const t = Math.PI / 6 + i * Math.PI / 3;
+    a.push([cx + Math.cos(t) * r, cy + Math.sin(t) * r * 0.58]);
+  }
+  return a;
+}
+const hex = (cx, cy, r) => pts(hexv(cx, cy, r));
+
+// Owner decision 2026-09-09: the modules were single flat polygons. Extruding them by
+// d px gives a real prism - a lit top face plus the two visible walls - so
+// they read as blocks standing on the slab rather than stickers printed on it.
+function hex3d(cx, cy, r, d) {
+  const v = hexv(cx, cy, r);
+  const dn = (p) => [p[0], p[1] + d];
+  return {
+    top: pts(v),
+    left: pts([v[2], v[1], dn(v[1]), dn(v[2])]),
+    right: pts([v[1], v[0], dn(v[0]), dn(v[1])]),
+  };
+}
+
+function drawGraph(g, p, z) {
+  const src = sourcesOf(p);
+  if (!src.length) return;
+  // The silo yard: the hub is the project and each satellite is a state source
+  // that genuinely exists on disk for it. Sited right of the hut, so the
+  // villager and the label both keep clear ground.
+  const [mx, my] = zoneXY(p, 0.46, -0.30);
+  const R = 0.26;
+  const r = Math.max(3.2, SC * 0.085);
+  const centre = iso(mx, my, z);
+  const sats = src.map((s, i) => {
+    const t = -Math.PI / 2 + (i / src.length) * Math.PI * 2;
+    return { s, at: iso(mx + Math.cos(t) * R, my + Math.sin(t) * R, z) };
+  });
+  sats.forEach((n, i) => {
+    const w = el("path", p._t === 1 ? "wire live" : "wire",
+      { d: `M${centre[0]} ${centre[1]}L${n.at[0]} ${n.at[1]}` });
+    g.appendChild(w);
+    // A second copy of the same line, dashed and drifting outward, is the
+    // packet. Two elements per wire, no JS ticking, no layout thrash.
+    const f = el("path", "flow", {
+      d: `M${centre[0]} ${centre[1]}L${n.at[0]} ${n.at[1]}` });
+    f.setAttribute("stroke", n.s.c);
+    f.style.setProperty("--fd", (2.6 + i * 0.45).toFixed(2) + "s");
+    g.appendChild(f);
+  });
+  // Depth inside the group: every shadow, then every wall, then every roof.
+  // Drawing a whole prism at a time would let a nearer prism's wall be
+  // painted over by the next prism's shadow.
+  const prisms = sats.map((n, i) => ({
+    c: n.s.c, r: r, at: n.at, md: ((i * 0.61) % 2.4).toFixed(2) + "s",
+  }));
+  prisms.push({ c: "var(--m-violet)", r: r * 1.34, at: centre, hub: true, md: "0s" });
+  const d = (q) => Math.max(2.2, q.r * 0.46);
+  prisms.forEach((q) => {
+    g.appendChild(el("ellipse", "modsh", {
+      cx: q.at[0], cy: q.at[1] + d(q) + q.r * 0.5,
+      rx: q.r * 0.92, ry: q.r * 0.34,
+    }));
+  });
+  prisms.forEach((q) => {
+    const h = hex3d(q.at[0], q.at[1], q.r, d(q));
+    ["left", "right"].forEach((side) => {
+      const w = el("polygon", "modw " + side, { points: h[side] });
+      w.setAttribute("fill", q.c);
+      w.style.setProperty("--md", q.md);
+      g.appendChild(w);
+    });
+  });
+  prisms.forEach((q) => {
+    const h = hex3d(q.at[0], q.at[1], q.r, d(q));
+    const t = el("polygon", "mod" + (q.hub ? " hub" : ""), { points: h.top });
+    t.setAttribute("fill", q.c);
+    t.style.setProperty("--md", q.md);
+    g.appendChild(t);
+  });
+}
+
+/* --------------------------------------------------------------- the sprite */
+
+// Chosen against the reference by rendering four candidate maps side by side.
+// '#' clay, 'o' eye. Wide head, small square eyes high in it, arms one pixel
+// proud on each side, four spread legs. crispEdges keeps it hard at any scale.
+const BOT = [
+  "..######..",
+  "..#o##o#..",
+  "..######..",
+  "..######..",
+  "..######..",
+  "..######..",
+  "..######..",
+];
+// The arms were baked into rows 4 and 5 of the body as a full-width band. Cut
+// out as their own map they can be drawn at two heights and cross-faded, which
+// is the same trick the legs already use for the footfall - so posing a worker
+// costs one more <g> and no scripting at all.
+const ARM = ["##......##", "##......##"];
+const LEGS_A = [".#.#..#.#.", ".#.#..#.#."];
+const LEGS_B = ["..#.##.#..", "..#.##.#.."];
+const ZED = ["###", "..#", ".#.", "#..", "###"];
+// Civil-engineer hard hat. A ridge knob, a rounded dome, then a wide brim
+// that overhangs the head by a pixel each side. Drawn high above the head so
+// none of it is hidden by the body, which is what let the old one-row cap
+// look like a thin skullcap.
+const HAT = [
+  "....##....",
+  "..######..",
+  ".########.",
+];
+// Phase 3 greeting arm. Rows 0-3 on the RIGHT side only, so its bottom pixel at
+// (8,3) sits directly on top of armA's (8,4) and the two read as one continuous
+// limb rather than a floating hand. Drawn as its own group precisely so it never
+// has to share a keyframe with armA/armB - see the .wav CSS.
+const WAV = [
+  ".........#",
+  "........##",
+  "........#.",
+  "........#.",
+];
+
+function rects(map, y0, fill, x0) {
+  let s = "";
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (map[y][x] !== "#") continue;
+      s += `<rect x="${x + (x0 || 0)}" y="${y + y0}" width="1" height="1" fill="${fill}"/>`;
+    }
+  }
+  return s;
+}
+function eyes(map, fill) {
+  let s = "";
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (map[y][x] !== "o") continue;
+      s += `<rect x="${x}" y="${y}" width="1" height="1" fill="${fill}"/>`;
+    }
+  }
+  return s;
+}
+const SPR_W = 10, SPR_H = BOT.length + LEGS_A.length;   // 10 x 9 sprite cell
+
+// Phase 1 of the movement work, 2026-09-10: the sprite is now scene content
+// rather than a standalone <svg> in an overlay. It returns the INNER markup and
+// the caller supplies the transforms, because a villager has to live inside the
+// depth-sorted scene to be occluded correctly once it starts walking.
+//
+// Dropping the <svg> wrapper also drops the viewBox, so props that used to need
+// overflow:visible to escape a 10x9 box now simply draw.
+function botBody(mode) {
+  const C = "var(--clay)";
+  const GREEN = "var(--m-green)", BLUE = "var(--m-blue)", STEEL = "var(--side-l)",
+        DARK = "var(--clay-dark)", PAPER = "var(--cream)", LINE = "var(--ink-soft)",
+        RED = "var(--m-red)", HATC = "#F4C04E";
+  // back: behind the body. front: in front of it (water, held tools, book).
+  // Both draw outside the 10x9 viewBox freely - .bot svg is overflow:visible.
+  let back = "", front = "";
+  if (mode === "sleep") {
+    back = `<g class="zed">${rects(ZED, -7, "rgba(255,255,255,.66)", 10)}</g>`;
+  } else if (mode === "eat") {
+    back = `<g class="food"><rect x="10" y="5" width="3" height="3" fill="${GREEN}"/></g>`;
+  } else if (mode === "farm") {
+    // A stalk of grain: one continuous stem with grains alternating up its
+    // sides. Deliberately has NO full-width horizontal row - a bar across a
+    // vertical stem is a plus sign, which is what made the previous seedling
+    // read as a cross rather than a plant.
+    back = `<g class="crop"><rect x="11" y="4" width="1" height="5" fill="${GREEN}"/>`
+      + `<rect x="12" y="4" width="1" height="1" fill="${GREEN}"/>`
+      + `<rect x="10" y="5" width="1" height="1" fill="${GREEN}"/>`
+      + `<rect x="12" y="6" width="1" height="1" fill="${GREEN}"/>`
+      + `<rect x="10" y="7" width="1" height="1" fill="${GREEN}"/></g>`;
+  } else if (mode === "swim") {
+    // Water drawn in FRONT, covering the legs and lower body, so the creature
+    // sits in it up to the chest. The arms (rows 2-4) stay above the surface
+    // and do the stroke. Three light dashes on top are the drifting ripple.
+    front = `<g class="water"><rect x="-2" y="5" width="14" height="4" fill="${BLUE}" opacity=".8"/>`
+      + `<g class="ripple"><rect x="-1" y="5" width="2" height="1" fill="rgba(255,255,255,.55)"/>`
+      + `<rect x="4" y="5" width="2" height="1" fill="rgba(255,255,255,.38)"/>`
+      + `<rect x="8" y="5" width="2" height="1" fill="rgba(255,255,255,.5)"/></g></g>`;
+  } else if (mode === "build") {
+    // Civil engineer: hard hat on the head, a tower crane beside, a load on the
+    // hoist that rises and falls, and the arms hammering.
+    back = `<g class="hat">${rects(HAT, -3, HATC)}</g>`
+      + `<g class="crane"><rect x="12" y="1" width="1" height="7" fill="${STEEL}"/>`
+      + `<rect x="9" y="1" width="4" height="1" fill="${STEEL}"/>`
+      + `<rect x="9" y="2" width="1" height="2" fill="${LINE}"/></g>`
+      + `<g class="hook"><rect x="8" y="4" width="2" height="2" fill="${DARK}"/></g>`;
+  } else if (mode === "fish") {
+    // A rod out of the raised hand, the line dropping to a bobber on a pond.
+    back = `<g class="pond"><rect x="9" y="6" width="5" height="3" fill="${BLUE}" opacity=".82"/></g>`;
+    front = `<g class="rod"><rect x="9" y="2" width="1" height="1" fill="${DARK}"/>`
+      + `<rect x="10" y="1" width="1" height="1" fill="${DARK}"/>`
+      + `<rect x="11" y="0" width="1" height="1" fill="${DARK}"/>`
+      + `<rect x="12" y="-1" width="1" height="1" fill="${DARK}"/>`
+      + `<rect x="12" y="0" width="1" height="6" fill="${LINE}"/></g>`
+      + `<g class="bobber"><rect x="12" y="6" width="1" height="1" fill="${RED}"/></g>`;
+  } else if (mode === "paint") {
+    // Artist at an easel: a canvas on a tripod, a fresh dab that keeps
+    // appearing, and a brush in the raised hand.
+    back = `<g class="easel"><rect x="10" y="1" width="3" height="3" fill="${PAPER}"/>`
+      + `<rect x="11" y="4" width="1" height="3" fill="${STEEL}"/>`
+      + `<rect x="10" y="6" width="1" height="1" fill="${STEEL}"/>`
+      + `<rect x="12" y="6" width="1" height="1" fill="${STEEL}"/></g>`
+      + `<g class="dab"><rect x="11" y="2" width="1" height="1" fill="${RED}"/></g>`;
+    front = `<g class="brush"><rect x="9" y="3" width="1" height="1" fill="${DARK}"/>`
+      + `<rect x="10" y="3" width="1" height="1" fill="${RED}"/></g>`;
+  } else if (mode === "read") {
+    // An open book at chest. A violet COVER underneath shows through as the
+    // spine and the bottom binding; cream pages sit on top. The cover must not
+    // be clay-coloured or it vanishes into the body - that was the bug that
+    // made this read as two loose white squares. One page turns now and then.
+    front = `<g class="book"><rect x="3" y="4" width="5" height="3" fill="var(--m-violet)"/>`
+      + `<rect x="3" y="4" width="2" height="2" fill="${PAPER}"/>`
+      + `<g class="pageR"><rect x="6" y="4" width="2" height="2" fill="${PAPER}"/></g></g>`;
+  } else if (mode === "carry") {
+    back = `<g class="load"><rect x="4" y="-2" width="2" height="2" fill="var(--m-violet)"/></g>`;
+  } else if (mode === "flag") {
+    // Messenger's pennant: an ink pole out of the right hand with an amber
+    // triangle tapering off the top.
+    //
+    // Two colour rules collide here and amber is the only thing that satisfies
+    // both. NOT red: red already means "blocked, but not on you" in roofOf(),
+    // and a messenger carrying a decision that IS waiting on you must not fly
+    // the other state's colour. NOT cream, which was the first attempt and
+    // measured wrong on screen - the flag flies six pixels ABOVE the head, so
+    // its background is whatever is behind the villager, and that is the
+    // near-white face of a front-comb cell. Cream on near-white is invisible;
+    // the pole showed and the flag did not. Amber carries on both the white
+    // cells and the dark ground, and no roof state uses it. Trap 13, one step
+    // out: a prop colour must clear its BACKGROUND, not just the body.
+    // Its HEIGHT is tied to where the messenger stands, and that has moved
+    // twice, so the reasoning matters more than the number.
+    //
+    // When the messenger walked off the comb to 1.35 cells in front of the
+    // nearest row, its feet were BELOW its own label, so a tall staff reached
+    // back UP into the chip and the flag was covered - it had to fly low, at
+    // arm height. Now that it stops at the front of its own cell instead, the
+    // chip is below the sprite, and low is exactly wrong: measured, the pole
+    // dipped 2px under the chip top at 1280 while the flag itself was clear.
+    // Raised to rows 0-2 with the pole ending at row 5, the whole pennant sits
+    // in the part of the sprite that clears the label.
+    //
+    // At narrow widths a villager beside a tall two-line chip is partly behind
+    // it anyway - measured at 16-20px even at REST - so that is a pre-existing
+    // property of labels outranking sprites (trap 9), not something the
+    // pennant can solve. tools/msgcheck.py measures all four widths.
+    // The amber is its own group: the FLAG is the signal and the pole is just
+    // structure, so a check can assert the signal is readable without demanding
+    // that a flagpole never passes behind a label.
+    back = `<g class="pennant"><rect x="10" y="0" width="1" height="6" fill="${LINE}"/>`
+      + `<g class="flag"><rect x="11" y="0" width="3" height="1" fill="${HATC}"/>`
+      + `<rect x="11" y="1" width="2" height="1" fill="${HATC}"/>`
+      + `<rect x="11" y="2" width="1" height="1" fill="${HATC}"/></g></g>`;
+  }
+  // The lid is generated by the SAME eyes() scan as the pupils, in clay instead
+  // of ink, and lives INSIDE the eyes group. Two consequences, both load-bearing:
+  // a blink can never land on the wrong pixels once Phase 3 shifts the eyes, and
+  // the lid's position can never drift from the pupils' if BOT is ever edited.
+  // The old markup hardcoded x=3 and x=6 and was a sibling of the pupils, so it
+  // had both failure modes.
+  return back
+    + `<g class="body">${rects(BOT, 0, C)}`
+    + `<g class="eyes">${eyes(BOT, "var(--eye)")}`
+    + `<g class="lid">${eyes(BOT, C)}</g></g></g>`
+    + `<g class="armA">${rects(ARM, 4, C)}</g>`
+    + `<g class="armB">${rects(ARM, 2, C)}</g>`
+    + `<g class="wav">${rects(WAV, 0, C)}</g>`
+    + `<g class="legsA">${rects(LEGS_A, BOT.length, C)}</g>`
+    + `<g class="legsB">${rects(LEGS_B, BOT.length, C)}</g>`
+    + front;
+}
+
+// Two nested groups, and the nesting is the whole trick. The OUTER group holds
+// the position in screen pixels, so every existing keyframe magnitude (bob at
+// -2px, hop at -1px, the wave, the blink lid, all seven trades) keeps working
+// completely unchanged. The INNER group holds the sprite scale. Its
+// translate(-5,-9) puts the sprite's origin at its FEET CENTRE, which is what
+// the old translate(-50%,-100%) anchor did.
+//
+// Position goes on the CSS `transform` property; the keyframes keep using the
+// independent `translate` property, and the two compose rather than fight. That
+// is what will let Phase 2 drive movement without touching any trade animation.
+function botNode(x, y, cls, opts) {
+  const g = el("g", "bot " + cls);
+  if (opts.id) g.setAttribute("data-id", opts.id);
+  g.style.setProperty("--delay", (opts.delay || 0).toFixed(2) + "s");
+  g.style.setProperty("--blink", (opts.blink || 0).toFixed(2) + "s");
+  g.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+  const inner = el("g", null, {
+    transform: `scale(${opts.px || 3}) translate(${-SPR_W / 2},${-SPR_H})`,
+    "shape-rendering": "crispEdges",
+  });
+  inner.innerHTML = botBody(opts.mode);
+  g.appendChild(inner);
+  return g;
+}
+
+/* ------------------------------------------------------------- the traffic */
+
+// Phase 2 of the movement work, 2026-09-10. Three decisions carry the whole
+// feature, and each one is load-bearing rather than stylistic:
+//
+//   1. State lives in WORLD coordinates in VILLS, which outlives layout().
+//      layout() rebuilds every DOM node on every resize and every 30s poll, so
+//      anything kept in screen pixels or on the element itself teleports the
+//      entire village home twice a minute.
+//   2. A trip is a flat list of steps and there is ONE code path for walking,
+//      loitering and coming back: a dwell is simply a step whose target is
+//      where you already stand. There is no state machine to fall out of sync.
+//   3. The frame loop stops itself the moment nobody is walking, and never
+//      starts at all under prefers-reduced-motion.
+
+const RM = matchMedia("(prefers-reduced-motion:reduce)");
+const VILLS = new Map();      // project id -> villager. Survives layout().
+let CELLG = [];               // cell <g>, painter order. Rebuilt by layout().
+let CELLD = [];               // matching cell depths
+let RAF = 0;
+let TRAFFIC = 0;              // the dispatch interval, held so it can be stopped
+const MAX_TRIPS = 4;          // the owner's legibility cap, all three types together
+const PACE = 2500;            // ms per cell walked. Slow enough to read.
+
+// Depth is x+y, the same quantity the cell sort uses. A cell's own depth is
+// exactly 2b, but a villager stands at dep -0.10, which is 0.116 SHALLOWER than
+// the cell under its feet. So a plain "cells no deeper than me" count excludes
+// the villager's entire row and paints it UNDER its own hut - measured, not
+// guessed: at row b=1.74 the cell is 3.480 and home is 3.364. Bias by half the
+// row pitch (rows are 2*B_STEP = 1.74 apart in depth) and a resting villager
+// falls inside its own row's bucket, while one that has genuinely crossed into
+// the next row does not.
+//
+// Half a pitch is a CHOICE, though, not the only defensible number, and the
+// comment should not pretend otherwise. A hex reaches 1.16 in depth from its own
+// centre at its lateral middle, which is further than the 0.87 half-pitch, so
+// adjacent rows' depth spans overlap - trap 7 again, sharing an edge still
+// overlaps in bounds. Between depth C-1.16 and C-0.87 a walker is geometrically
+// inside the near cell's top face while still painted under it, so its feet clip
+// for a moment at a row boundary. Switching at 1.16 instead would trade that for
+// the walker painting OVER that cell's roof while still behind it, which is the
+// worse defect and the one trap 10 was about. One insertion point per villager
+// cannot satisfy both. 0.87 takes the brief clip and puts the swap in the empty
+// gap between the two rows' hexes.
+const BIAS = B_STEP;
+const bucketOf = (d) => {
+  // ponytail: linear scan of ~26 cells for at most four travellers per frame.
+  // Sort once and bisect if the hive ever holds hundreds.
+  let n = 0;
+  for (let i = 0; i < CELLD.length; i++) if (CELLD[i] <= d + BIAS) n++;
+  return n;
+};
+
+const homeW = (p) => {
+  const [x, y] = zoneXY(p, 0, -0.10);
+  return [x, y, PLOT_T[p._t] || 0.12];
+};
+// Trips run along the HOME depth line, the one every villager already stands
+// on. An earlier version walked a "street" at dep +0.15, a strip in front of
+// the huts, on the theory that a centre-to-centre line clips a neighbour's hut.
+// It does not: every hut sits at dep -0.30, so the home line at dep -0.10 is
+// already in FRONT of all of them and painting over them is correct. What the
+// street did instead was drop the sprite 16px, into the label chip - measured
+// at 4px, 0px and 6px of clearance at 1600, 1280 and 820. Zero is not a pass
+// (trap 12). Walking the home line inherits home's clearance, which Phase 1
+// already proved good, and it deletes a whole trip step.
+//
+// A visitor stands BESIDE the resident, on the target's own cell, at a fixed
+// lateral offset expressed in THAT CELL'S frame. This replaced a
+// stop-short-by-distance helper, and the difference is the whole point: a
+// distance along the line between two centres is only inside a hexagon if the
+// arithmetic happens to work out, and when it did not the villager stood in the
+// seam between two cells - measured, as wanderers out of bounds during their
+// dwell. A point at lat +-0.55 is inside that cell's hexagon BY CONSTRUCTION at
+// any SC, since the hex reaches lat 1.0, and it stands about half a cell clear
+// of the resident at lat 0.
+const SIDE = 0.55;
+// Approach from the side the traveller actually comes from, so it never walks
+// through the resident to reach the far side. Lateral is x-y in this lattice,
+// so comparing that is the whole test.
+const sideOf = (from, to) =>
+  (from._x0 - from._y0) < (to._x0 - to._y0) ? -SIDE : SIDE;
+const besideW = (q, lat) => {
+  const [x, y] = zoneXY(q, lat, -0.10);
+  return [x, y, PLOT_T[q._t] || 0.12];
+};
+// A messenger steps to the FRONT OF ITS OWN CELL and waits there. It used to
+// walk off the comb entirely, onto the bare ground 1.35 cells in front of the
+// nearest row - which is what the spec asked for, and it was the only villager
+// that ever left a cell. The owner flagged it twice; a point-in-hexagon test over
+// 313 sampled traveller positions confirmed messengers were the ONLY offender
+// (83 samples standing out front, 12 in transit) and that wanderers and
+// couriers never leave a cell at all. He chose in-bounds.
+//
+// FRONT_DEP is measured, not chosen by eye. The label chips are a fixed pixel
+// size and sit over the front half of every cell, so how far forward a villager
+// can stand is a pixel question, not a world-space one. Swept -0.10 to 0.50 at
+// four widths against every active project:
+//
+//   at 1600, dep 0.10 is the last fully clear spot (0px hidden, 6px to spare)
+//   at 1280 and 1024, dep 0.10 is hidden 6px and 12px - but the villager's own
+//   RESTING position is hidden 16px and 20px there already, by the taller
+//   two-line chips of the row in front. So stepping forward makes it MORE
+//   visible than standing at home, not less.
+//   every dep out to 0.50 stays inside the hexagon, so the hex is not the
+//   binding constraint - the labels are.
+//
+// So 0.10 is the forward-most step that is never worse than how the village
+// already looks at rest. tools/msgcheck.py measures it.
+const FRONT_DEP = 0.10;
+const frontW = (p) => {
+  const [x, y] = zoneXY(p, 0, FRONT_DEP);
+  return [x, y, PLOT_T[p._t] || 0.12];
+};
+// Adjacent hex centres are sqrt(2) apart in this lattice, so distance/sqrt(2)
+// is distance in CELLS, and one pace per cell holds however long the route is.
+const legsOf = (a, b) =>
+  Math.max(0.4, Math.hypot(b[0] - a[0], b[1] - a[1]) / Math.SQRT2);
+
+// Every step target is resolved LIVE, every frame, and never captured at
+// dispatch. This is the single most important rule in the file.
+//
+// `load()` replaces PROJECTS wholesale on each poll, and `place()` assigns comb
+// slots from projects sorted by last_activity - so switching project, which is
+// exactly the courier's trigger, re-slots the hive underneath a walker.
+// `combDims()` also keys off hive.clientWidth, so a resize across a column
+// threshold re-slots everything. A world coordinate captured at dispatch is
+// therefore a coordinate that may belong to a different project, or to empty
+// comb, seconds later - and the villager would walk to it anyway. Resolving by
+// project ID against the CURRENT scan is what makes a journey mean something.
+//
+// If the destination project is gone from the scan, the trip retargets home,
+// which is the only place still guaranteed to exist.
+function resolve(v, s) {
+  if (s.at === "home") return [v.hx, v.hy, v.hz];
+  const p = PROJECTS.find((q) => q.id === s.id);
+  if (!p || p._x0 === undefined) return [v.hx, v.hy, v.hz];
+  if (s.at === "front") return frontW(p);
+  return besideW(p, s.lat || 0);
+}
+
+// What the sprite should look like right now. A resting villager is its trade.
+// A moving one is the gait plus whatever it carries, and that load is the only
+// thing telling the three traffic types apart at a glance: nothing, a pennant,
+// or the violet cube.
+function look(v) {
+  if (!v.trip) return [v.trade, v.trade];
+  const prop = v.kind === "courier" ? "carry" : v.kind === "msg" ? "flag" : "plain";
+  return [v.trip[v.si].hold ? "wait" : "walk", prop];
+}
+// Repaints the look in place. The outer group is never replaced, so position is
+// never lost; only the inner markup and the class change.
+// The class attribute is written from ONE place, because Phase 3 put two more
+// flags on it. setLook() used to write "bot " + cls literally, which silently
+// erased greet/peek every time a villager changed look - the exact case of a
+// greeted villager being dispatched mid-wave. Both writers go through this.
+function clsOf(v) {
+  return "bot " + v.cls + (v.greet ? " greet" : "") + (v.peek ? " peek" : "");
+}
+function setLook(v) {
+  const [cls, mode] = look(v);
+  if (cls === v.cls && mode === v.mode) return;
+  if (mode !== v.mode) v.el.firstChild.innerHTML = botBody(mode);
+  v.cls = cls; v.mode = mode;
+  v.el.setAttribute("class", clsOf(v));
+}
+
+// Called by layout() for every cell that gets a villager: creates the model on
+// first sight, re-homes it in world space every time, hands back a fresh DOM
+// node - and never touches a trip in progress.
+function villager(p, trade, vi, cg) {
+  let v = VILLS.get(p.id);
+  if (!v) { v = { id: p.id, trip: null, si: 0, t0: 0, cool: 0 }; VILLS.set(p.id, v); }
+  const [hx, hy, hz] = homeW(p);
+  v.trade = trade; v.sleep = trade === "sleep";
+  v.hx = hx; v.hy = hy; v.hz = hz; v.cellG = cg;
+  // A villager that fell dormant mid-journey stops being a traveller at once.
+  // "Sleepers never move" has to hold across a TIER CHANGE, not only at
+  // dispatch: tier() reads last_activity, so a project can cross the 30-day
+  // line while its villager is out walking, and without this it would finish
+  // the trip as a sleeper. The re-home below then puts it back on its cell.
+  if (v.sleep && v.trip) { v.trip = null; v.si = 0; }
+  if (!v.trip) { v.wx = hx; v.wy = hy; v.wz = hz; }   // at rest, follow the cell
+  const [cls, mode] = look(v);
+  v.cls = cls; v.mode = mode;
+  const [sx, sy] = iso(v.wx, v.wy, v.wz);
+  // Phase 3 needs a SCREEN position for every villager, not only the walking
+  // ones, and layout() is the only place a resting villager's position is ever
+  // computed. Stored here and in paint(), which between them are the two - and
+  // only two - writers of v.el's transform. v.px is the sprite scale, needed to
+  // find where the EYES are rather than the feet the transform anchors.
+  v.sx = sx; v.sy = sy; v.px = SC > 26 ? 3 : 2;
+  // The node is rebuilt, so any greet/peek class on the old one is gone. Clear
+  // the model to match: setProx() skips the write when the flag is unchanged, so
+  // a villager left greet=true by the previous layout would keep that stale value
+  // while its fresh node carried no class, and it would never wave again until
+  // the cursor left the ring and came back. The next proximity frame re-derives
+  // both, and layout() calls it directly.
+  v.greet = false; v.peek = false;
+  v.el = botNode(sx, sy, cls, {
+    id: p.id, delay: (vi % 7) * 0.31, blink: (vi % 5) * 0.9,
+    px: v.px, mode: mode,
+  });
+  v.bucket = -1;    // forces one re-insert on the next paint for anyone walking
+  return v.el;
+}
+
+function paint(v) {
+  const [sx, sy] = iso(v.wx, v.wy, v.wz);
+  v.sx = sx; v.sy = sy;          // Phase 3 reads these, never the DOM
+  v.el.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`;
+  const b = bucketOf(v.wx + v.wy);
+  if (b === v.bucket) return;    // re-insert on BUCKET CHANGE only, never per frame
+  v.bucket = b;
+  scene.insertBefore(v.el, CELLG[b] || null);
+}
+
+/* ------------------------------------------------- Phase 3: cursor proximity */
+// Every radius is in SC UNITS, never screen pixels, for the same reason fit()
+// works in SC: the hive rescales with the viewport, so SC runs from about 30 at
+// 820px to 113 at 1600px. A ring fixed in pixels would swallow a whole cell at
+// one width and reach barely past a sprite at another.
+const R_LOOK = 1.15;        // a SLEEPER opens its eyes inside this many SC
+const R_GREET_IN = 0.50;    // an awake villager starts waving inside this
+const R_GREET_OUT = 0.60;   // ...and keeps waving until the cursor passes this.
+// R_GREET_OUT exists only as HYSTERESIS. With a single threshold a cursor parked
+// exactly on the boundary flips greet on and off on consecutive frames, which
+// restarts the wave keyframe from 0% each time and reads as a twitch, not a wave.
+
+let CUR_X = 0, CUR_Y = 0, CUR_IN = false, PROXRAF = 0, SRECT = null;
+
+// One listener for the whole village, coalesced through rAF. mousemove fires
+// well above the refresh rate and the handler touches every villager, so running
+// it per event would repeat the same work several times for a single frame.
+function onMove(e) {
+  // Reduced motion is tested HERE, not only inside updateProx(). The invariant is
+  // that reduced motion leaves no rAF SCHEDULED, and a gate further downstream
+  // still books one frame per mouse move before deciding to do nothing in it.
+  // updateProx() keeps its own live check for the paths that do not come through
+  // here - layout()'s tail and tick().
+  if (RM.matches) return;
+  CUR_X = e.clientX; CUR_Y = e.clientY; CUR_IN = true;
+  if (!PROXRAF) PROXRAF = requestAnimationFrame(proxFrame);
+}
+function proxFrame() { PROXRAF = 0; updateProx(); }
+
+// Writes the two Phase 3 outputs onto one villager, and nothing else. There is
+// deliberately no position among them: "sleepers never move" - and for that
+// matter "nobody teleports" - is not weakened anywhere in this feature. Nor is
+// there any geometry: the whole feature is two class flags, so nothing here can
+// move a pixel of the sprite itself.
+function setProx(v, greet, peek) {
+  if (greet === v.greet && peek === v.peek) return;
+  v.greet = greet; v.peek = peek;
+  v.el.setAttribute("class", clsOf(v));
+}
+function clearProx() {
+  VILLS.forEach((v) => { if (v.el && v.el.isConnected) setProx(v, false, false); });
+}
+
+function updateProx() {
+  // Tested LIVE, exactly as dispatch() does and for exactly the same reason: a
+  // probe can emulate the media query after navigation, and a value latched at
+  // load would let the eyes go on tracking after the user asked for stillness.
+  if (RM.matches) { clearProx(); return; }
+  if (!CUR_IN || !VILLS.size) return;
+  // The rect is CACHED, not read per frame. updateProx() runs at the tail of
+  // tick(), immediately after paint() has written transforms, and a
+  // getBoundingClientRect() there forces a synchronous layout every frame -
+  // classic read-after-write thrash. Invalidated by layout(), resize and scroll,
+  // which are the only things that can move the scene box.
+  if (!SRECT) SRECT = scene.getBoundingClientRect();
+  const r = SRECT;
+  if (!r.width || !r.height) { SRECT = null; return; }
+  // #scene carries viewBox "0 0 clientWidth clientHeight" on an element sized
+  // 100%/100%, so user units are CSS pixels 1:1 today. The ratio is computed
+  // rather than assumed anyway, so a later viewBox change cannot silently offset
+  // every reading by a scale factor.
+  const vb = scene.viewBox.baseVal;
+  const cx = (CUR_X - r.left) * ((vb && vb.width ? vb.width : r.width) / r.width);
+  const cy = (CUR_Y - r.top) * ((vb && vb.height ? vb.height : r.height) / r.height);
+
+  const look2 = (SC * R_LOOK) ** 2;
+  const gin2 = (SC * R_GREET_IN) ** 2, gout2 = (SC * R_GREET_OUT) ** 2;
+
+  VILLS.forEach((v) => {
+    // NOT about the search filter: applyFilter() dims a villager with
+    // style.opacity and leaves it in the document, so a filtered-out villager
+    // still greets, at 13% opacity, and that is intended. This guard is for a
+    // villager whose PROJECT has left the scan - VILLS outlives layout(), so its
+    // model keeps a v.el that is no longer attached to anything.
+    if (!v.el || !v.el.isConnected) return;
+    // Measured to the FACE, not the feet. v.sx/v.sy anchor the feet, because
+    // botNode's inner translate(-5,-9) puts the sprite origin there, and the head
+    // sits about 7.5 sprite pixels above that. Using the feet would make a cursor
+    // level with a villager's face read as most of a sprite-height away and shrink
+    // every ring from above.
+    const ax = v.sx, ay = v.sy - (SPR_H - 1.5) * (v.px || 3);
+    const dx = cx - ax, dy = cy - ay;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > look2) { setProx(v, false, false); return; }
+
+    // A sleeper opens its eyes and stops dreaming, and never waves - the owner's
+    // call, 2026-09-13, and the spec's own scoping of the greeting away from
+    // sleepers. peek is what lifts the held-shut lid; nothing else changes, and
+    // in particular nothing moves.
+    if (v.sleep) { setProx(v, false, true); return; }
+    const greet = v.greet ? d2 <= gout2 : d2 <= gin2;
+    setProx(v, greet, false);
+  });
+}
+
+function tick(now) {
+  // Cleared FIRST, then re-armed at the end. If anything below ever throws,
+  // RAF would otherwise keep a already-fired handle forever, dispatch()'s
+  // `if (!RAF)` guard would never re-arm, and every villager would be frozen
+  // mid-route with its trip still set - permanently, until a reload. Clearing
+  // first costs nothing and makes that unrecoverable state unreachable.
+  RAF = 0;
+  let busy = 0;
+  VILLS.forEach((v) => {
+    if (!v.trip) return;
+    busy++;
+    const s = v.trip[v.si];
+    const to = resolve(v, s);
+    // Resolving live means the destination can JUMP a whole comb when place()
+    // re-slots the hive mid-step. Left alone the villager then walks all the way
+    // across to catch up - smoothly, so it looks deliberate - and on the way it
+    // crosses empty comb and the band gap, which is villagers "out of bounds"
+    // from the cells. Measured: depth offsets climbing 1.29 -> 3.62 from its own
+    // cell during a single dwell. It is carried with its cell instead: the same
+    // delta is applied to its position and its step origin, so it keeps its
+    // place relative to where it is going and never travels the difference.
+    // Any jump at all is a re-slot - the target is otherwise constant within a
+    // step - so the threshold only has to sit under one cell spacing (1.414).
+    if (v.lastTo) {
+      const jx = to[0] - v.lastTo[0], jy = to[1] - v.lastTo[1];
+      if (Math.abs(jx) + Math.abs(jy) > 0.5) {
+        v.wx += jx; v.wy += jy; v.fx += jx; v.fy += jy;
+      }
+    }
+    v.lastTo = to;
+    const u = Math.min(1, (now - v.t0) / s.dur);
+    if (u >= 1) {
+      // Arriving means arriving EXACTLY. `fx + (to - fx) * 1` is not `to` in
+      // floating point - it lands about 1e-16 away - and since each step starts
+      // from where the last one ended, that error compounds for the life of the
+      // page and a villager never quite gets home again.
+      v.wx = to[0]; v.wy = to[1]; v.wz = to[2];
+    } else {
+      v.wx = v.fx + (to[0] - v.fx) * u;
+      v.wy = v.fy + (to[1] - v.fy) * u;
+      v.wz = v.fz + (to[2] - v.fz) * u;
+    }
+    paint(v);
+    if (u < 1) return;
+    v.fx = v.wx; v.fy = v.wy; v.fz = v.wz;
+    v.si++; v.t0 = now; v.lastTo = null;
+    if (v.si < v.trip.length) { setLook(v); return; }
+    v.trip = null; v.si = 0; v.kind = null;
+    setLook(v);
+    // Home again, so put it back in the exact slot Phase 1 built - immediately
+    // after its own cell - rather than leaving it at the end of its row bucket.
+    // The Phase 1 harness asserts that ordering for every villager at rest.
+    v.cellG.after(v.el);
+    v.bucket = bucketOf(v.wx + v.wy);
+  });
+  // Proximity is refreshed from the traffic loop as well as from mousemove,
+  // because a WALKING villager changes its distance to a stationary cursor. On
+  // mousemove alone a traveller would walk straight past the pointer wearing
+  // whatever offset it had when the mouse last moved.
+  const rolling = stepVehicles(now);
+  if (busy) updateProx();
+  if (busy || rolling) RAF = requestAnimationFrame(tick);
+}
+
+// Where a trip goes, as a DESCRIPTOR rather than a coordinate - `{at, id, gap}`
+// for resolve() to turn into a live position every frame. Returns null when
+// there is nowhere sensible to walk, and the dispatcher then sends nobody.
+//
+// Every destination is somewhere ON the comb: a messenger steps to the front of
+// its own cell (see frontW), a courier and a wanderer stop short of another
+// cell's centre (see besideW). No villager stands off a cell any more.
+function target(kind, p) {
+  if (kind === "msg") return { at: "front", id: p.id };
+  const act = PROJECTS.filter((q) => q._t !== 3 && q.path_exists);
+  if (kind === "courier") {
+    // The project you are in NOW, by last_activity. Same active filter layout()
+    // uses, or the courier could be sent to a cell with no villager on it.
+    const to = act.slice().sort((a, b) =>
+      new Date(b.last_activity || 0) - new Date(a.last_activity || 0))[0];
+    return to && to.id !== p.id
+      ? { at: "cell", id: to.id, lat: sideOf(p, to) } : null;
+  }
+  // Wanderer: an adjacent cell in its own comb that has someone to visit. Every
+  // hex neighbour is sqrt(2) away and every two-step cell 2.0 or more, so a
+  // squared-distance cut at 3.0 IS the adjacency test. No graph needed.
+  // No band check is needed: `act` already drops tier 3, and band 1 IS tier 3
+  // by construction, so everything left is in the front comb.
+  const nb = act.filter((q) => q.id !== p.id
+    && ((q._x0 - p._x0) ** 2 + (q._y0 - p._y0) ** 2) < 3.0);
+  if (!nb.length) return null;
+  const pick = nb[Math.floor(Math.random() * nb.length)];
+  return { at: "cell", id: pick.id, lat: sideOf(p, pick) };
+}
+
+// One dispatcher on a slow interval rather than a timer per villager. It also
+// owns the decision NOT to run: reduced motion is tested HERE, live, instead of
+// latched at load, because a probe can emulate the media query after navigation
+// and a latched read would then be stale and let the loop start.
+function dispatch() {
+  if (RM.matches) return;
+  spawnVehicles();
+  let flying = 0;
+  VILLS.forEach((v) => { if (v.trip) flying++; });
+  if (flying >= MAX_TRIPS) return;
+  const now = performance.now();
+  const act = PROJECTS.filter((p) => p._t !== 3 && p.path_exists);
+
+  // Priority order IS the feature. A decision waiting on the owner walks to the
+  // front first, the real context switch second, ambience last.
+  const pool = [];
+  act.forEach((p) => { if (p.waiting_count) pool.push(["msg", p]); });
+  const recent = act.slice().sort((a, b) =>
+    new Date(b.last_activity || 0) - new Date(a.last_activity || 0));
+  // recent[0] is where you are now; recent[1] is where you came from, and the
+  // courier walks that edge. Switch project and the route changes on the poll.
+  if (recent.length > 1) pool.push(["courier", recent[1]]);
+  act.forEach((p) => pool.push(["wander", p]));
+
+  // Sleepers are excluded by construction: a dormant villager would contradict
+  // the dormancy signal, and `act` drops tier 3 before anything else looks.
+  const ready = pool.filter(([, p]) => {
+    const v = VILLS.get(p.id);
+    return v && !v.trip && !v.sleep && v.cool < now;
+  });
+  if (!ready.length) return;
+  // A WEIGHTED draw, not strict priority. Strict priority starves the bottom of
+  // the list dead: measured, not feared - with three projects holding decisions
+  // and a cap of four, messengers were re-eligible before a wanderer ever got a
+  // slot, so the baseline ambience never ran once in a 30-second harness. Weight
+  // keeps a waiting decision three times as likely as a stroll and still lets
+  // every type flow.
+  // The weights are PER ENTRY, and a waiting project is listed twice - once as
+  // a messenger and once as a wanderer - so landing on that project still sends
+  // a plain stroller about one time in four. That is deliberate slack, not a
+  // guarantee: a decision gets a messenger sooner, it does not get one every
+  // time. r is always in [0, tot) with tot >= 1, so find() always hits.
+  const W = { msg: 3, courier: 2, wander: 1 };
+  let tot = 0;
+  ready.forEach(([k]) => { tot += W[k]; });
+  let r = Math.random() * tot;
+  const [kind, p] = ready.find(([k]) => (r -= W[k]) < 0);
+
+  const v = VILLS.get(p.id);
+  const away = target(kind, p);
+  if (!away) return;
+  v.kind = kind;
+  // Pace is measured ONCE, from the route as it stands now, and both legs use
+  // it. An earlier version gave the trip three different speeds - a 0.45-pace
+  // hop out of the yard, then the journey, then a padded return - which read on
+  // screen as a villager creeping out, sprinting across at 3.1x, then ambling
+  // home. One speed, both directions.
+  const far = legsOf([v.wx, v.wy, v.wz], resolve(v, away));
+  v.fx = v.wx; v.fy = v.wy; v.fz = v.wz;
+  // A villager at rest and one in flight are slotted by DIFFERENT rules: at rest
+  // it sits immediately after its own cell, in flight it sits by depth bucket.
+  // For a FRONT-ROW villager those two disagree while the bucket number does
+  // not change - its home bucket is already "past every cell" - so paint() saw
+  // no change, never re-inserted, and the front cells painted over a messenger
+  // standing in front of the hive. Measured: 56 samples with two front-row cells
+  // drawn after the traveller. Invalidating the bucket on departure forces the
+  // one re-insert that moves it out of its resting slot.
+  v.bucket = -1;
+  const dwell = kind === "msg" ? 6000 : 3200;
+  v.trip = [
+    { ...away, dur: PACE * far },                      // the journey out
+    { ...away, dur: dwell, hold: true },               // loiter there
+    { at: "home", dur: PACE * far },                   // straight back
+  ];
+  v.si = 0;
+  v.lastTo = null;
+  v.t0 = now;                    // performance.now(), the same clock as rAF
+  // Counted from ARRIVAL, not from departure. Measured from dispatch, a 9-18s
+  // cooldown against a ~9s round trip meant one draw in six had already lapsed
+  // before the villager got home, so it could be sent straight back out on the
+  // frame it arrived and the median rest was about three seconds.
+  v.cool = now + PACE * far * 2 + dwell + 6000 + Math.random() * 9000;
+  setLook(v);
+  if (!RAF) RAF = requestAnimationFrame(tick);
+}
+
+/* ------------------------------------------------------------------ render */
+
+function layout() {
+  const w = hive.clientWidth, h = hive.clientHeight;
+  applySky();
+  place(PROJECTS);
+  fit(PROJECTS);
+
+  scene.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  [...scene.querySelectorAll("g,ellipse,path.floor,path.floor-hot")].forEach((n) => {
+    if (n.parentNode === scene) scene.removeChild(n);
+  });
+  nodesEl.innerHTML = "";
+
+  scene.appendChild(drawFloor());
+  scene.appendChild(drawRoads());
+
+  // Painter order: nearest last. (x+y) is exactly depth in this projection.
+  const order = PROJECTS.slice().sort((a, b) => (a._x0 + a._y0) - (b._x0 + b._y0));
+  const cells = PROJECTS.concat(VACANT)
+    .sort((a, b) => (a._x0 + a._y0) - (b._x0 + b._y0));
+
+  // Trades are worked out BEFORE the cell loop, because each villager is now
+  // appended immediately after the cell it stands on. Standing on a cell means
+  // sharing its depth, so that single insertion point gives correct occlusion
+  // for free: every NEARER cell is drawn later and therefore covers it.
+  const ACTS = ["farm", "swim", "build", "fish", "paint", "read", "eat"];
+  const active = order.filter((p) => p._t !== 3 && p.path_exists)
+    .slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const trade = new Map();
+  active.forEach((p, i) => trade.set(p.id, ACTS[i % ACTS.length]));
+
+  let vi = 0;
+  const seen = new Set();
+  CELLG = []; CELLD = [];
+  cells.forEach((c, i) => {
+    const cg = drawPlaque(c, i);
+    scene.appendChild(cg);
+    // The cell groups and their depths, in painter order. This is the table the
+    // frame loop re-inserts travellers against, so it is captured here rather
+    // than re-queried from the DOM every frame.
+    CELLG.push(cg); CELLD.push(c._x0 + c._y0);
+    // Dormant cells sleep whether or not their path resolved; an active one
+    // needs a real directory before a villager claims to be working in it.
+    if (c.vacant || !(c.path_exists || c._t === 3)) return;
+    const mode = c._t === 3 ? "sleep" : (trade.get(c.id) || "farm");
+    scene.appendChild(villager(c, mode, vi, cg));
+    seen.add(c.id);
+    vi++;
+  });
+  // Villagers are born and die only when the PROJECT SET changes, never when
+  // the DOM is rebuilt. Anything else restarts every journey on the 30s poll.
+  VILLS.forEach((v, id) => { if (!seen.has(id)) VILLS.delete(id); });
+  // Buckets can only be computed once every cell is in place. Travellers get
+  // re-projected here too: that, plus world-space state, is the whole reason a
+  // journey survives a resize and a poll instead of snapping home.
+  VILLS.forEach((v) => {
+    if (v.trip) paint(v);
+    else v.bucket = bucketOf(v.wx + v.wy);
+  });
+  relayoutVehicles();
+  order.forEach((p, i) => nodesEl.appendChild(chipFor(p, i)));
+  dropMetaClashes();
+
+  applyFilter();
+  if (openId) {
+    document.querySelector(`.node[data-id="${CSS.escape(openId)}"]`)?.classList.add("open");
+    placeBubble(openId);
+  }
+  // The scene box can have moved and every villager node is new, so the cached
+  // rect is dropped and proximity re-derived immediately. Without the second
+  // call a resize under a stationary cursor leaves the whole village blank-eyed
+  // until the mouse next moves. It is a no-op before the first mousemove.
+  SRECT = null;
+  updateProx();
+}
+
+function chipFor(p, step) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "node" + (p._t === 1 ? "" : " small") + (p._t === 3 ? " far" : "")
+    + (p.missing ? " gone" : "") + (p.unresolved ? " unres" : "");
+  b.dataset.id = p.id;
+  b.style.setProperty("--x", p._chipX.toFixed(1) + "px");
+  b.style.setProperty("--y", p._chipY.toFixed(1) + "px");
+  // A tile is 1.732*w*SC wide on screen, but cw used to be w*SC*1.05, i.e. 61%
+  // of it, and a 3.1-unit dormant slab then floored at the 74px minimum. That
+  // is exactly where "Project Alpha..." and "Iota ca..." came from. Tiles at equal
+  // depth are 2*1.732*w*SC apart and every other neighbour is offset half a
+  // tile in y, so a chip up to about 200px can never reach another chip.
+  // Sized to the CELL, not to its neighbours: the label sits inside the
+  // hexagon now, and the hexagon has narrowed to 1.14 radii by the depth the
+  // bottom of the label reaches. Two-line clamping carries the long names.
+  const cw = Math.min(210, Math.round(SC * 1.15));
+  b.style.setProperty("--cw", Math.max(86, cw) + "px");
+  b.style.setProperty("--in", (step * 0.028).toFixed(2) + "s");
+
+  const cls = p._t === 1 ? "" : p._t === 2 ? " mid" : " old";
+  const flag = p.waiting_count ? `<span class="flag">${p.waiting_count}</span>` : "";
+  const stale = p.drift ? `<span class="stale" title="Work landed after the last session-state write">STALE</span>` : "";
+  b.innerHTML = `<span class="chip"><span class="dot${p.waiting_count ? " warn" : cls}"></span>`
+    + `<span class="nm">${esc(p.name)}${p.missing ? " (gone)" : ""}</span>${stale}${flag}</span>`
+    // Comb rows sit 0.87*SC apart. A label with its meta line runs about 48px
+    // tall and about 30px without, so the meta line is only affordable when the
+    // row pitch clears it with room to spare.
+    //
+    // 60 was too tight and it bit: 820x940 gives SC 71, a pitch of 61.8, which
+    // cleared 60 by under two pixels and still put a short name into `Project Alpha` once
+    // the meta text grew. 68 leaves real slack - meta shows from 1280 up
+    // (pitch 71.8) and is dropped at 1024 (55.3) and 820 (61.8).
+    + (p._t === 1 && SC * 0.87 > 68 ? `<span class="meta">${esc(ago(p.last_activity))}`
+        + (p.sessions ? ` &middot; ${p.sessions} sess` : "")
+        + (p.bytes ? ` &middot; ${mb(p.bytes)}` : "") + `</span>` : "");
+  b.setAttribute("aria-label", p.name + ", " + ago(p.last_activity)
+    + (p.waiting_count ? ", " + p.waiting_count + " waiting on you" : "")
+    + (p.drift ? ", state is stale" : ""));
+  b.addEventListener("click", (e) => { e.stopPropagation(); toggle(p.id); });
+  return b;
+}
+
+/* ------------------------------------------------------------------ bubble */
+
+function toggle(id) { openId === id ? closeBubble() : openBubble(id); }
+function closeBubble() {
+  openId = null;
+  document.getElementById("bubble")?.remove();
+  document.querySelectorAll(".node.open").forEach((n) => n.classList.remove("open"));
+}
+
+function openBubble(id) {
+  closeBubble();
+  const p = PROJECTS.find((x) => x.id === id);
+  if (!p) return;
+  openId = id;
+
+  const b = document.createElement("div");
+  b.id = "bubble";
+  b.setAttribute("role", "dialog");
+  b.setAttribute("aria-label", p.name);
+
+  const st = (p.status || "").toLowerCase();
+  const badge = (p.status ? `<span class="badge ${esc(st)}">${esc(p.status)}</span>` : "")
+    + (p.stage ? `<span class="badge stage">${esc(p.stage)}</span>` : "")
+    + (p.drift ? `<span class="badge stale">STALE</span>` : "");
+  const bits = [ago(p.last_activity)];
+  if (p.branch) bits.push(esc(p.branch));
+  if (p.dirty) bits.push(p.dirty + " dirty");
+
+  let body;
+  if (p.next_action) {
+    body = `<div><div class="lead">${p.drift ? "NEXT (written before the latest work)" : "NEXT"}</div>`
+      + `<p class="say">${esc(p.next_action)}</p></div>`;
+  } else if (p.prompts && p.prompts.length) {
+    body = `<div class="lead">${p.prompt_trivial ? "LAST PROMPT (says little)" : "LAST PROMPT"}</div>`
+      + `<p class="say mono">${esc(p.prompts[p.prompts.length - 1])}</p>`;
+  } else if (p.status_note) {
+    body = `<div class="lead">STATUS</div><p class="say">${esc(p.status_note)}</p>`;
+  } else {
+    body = `<p class="why">${esc(p.note || "No session state and no transcript yet. Open it and start one.")}</p>`;
+  }
+
+  const src = sourcesOf(p);
+  const sources = src.length
+    ? `<div><div class="lead">SOURCES (${src.length})</div><ul class="src">` + src.map((s) =>
+        `<li><span class="ic" data-c="${esc(s.k)}"></span><span class="pill">${esc(s.pill)}</span>`
+        + `<span class="lb">${esc(s.label)}</span></li>`).join("") + "</ul></div>"
+    : "";
+
+  // The readiness gate from library.py gate(): one question, the blocking one
+  // first. A folder that no longer exists has no gate, so nothing renders.
+  // What showed the last step worked, as /library-checkpoint recorded it.
+  const proof = p.proof
+    ? `<div class="gate"><div class="lead">PROOF</div><p class="why">${esc(p.proof)}</p></div>`
+    : "";
+  // The story, straight from the transcripts: the first real prompt (why it
+  // exists), Claude's own title for the latest session, and what shipped.
+  const story = p.origin_prompt || p.latest_chapter || p.pr_count
+    ? `<div class="gate">`
+      + (p.origin_prompt ? `<div class="lead">STARTED AS &middot; ${esc((p.origin_at || "").slice(0, 10))}</div>`
+        + `<p class="why mono">${esc(p.origin_prompt)}</p>` : "")
+      + (p.latest_chapter ? `<div class="lead">CHAPTER ${p.chapter_count} &middot; CLAUDE'S TITLE</div>`
+        + `<p class="why">${esc(p.latest_chapter)}</p>` : "")
+      + (p.pr_count ? `<p class="why"><b>${p.pr_count}</b> ${p.pr_count > 1 ? "pull requests" : "pull request"} shipped</p>` : "")
+      + `</div>`
+    : "";
+
+  // The catalog card: who it is for and why it mattered, so a building found
+  // months later explains itself.
+  const card = p.for || p.bet
+    ? `<div class="gate">` + (p.for ? `<div class="lead">FOR</div><p class="why">${esc(p.for)}</p>` : "")
+      + (p.bet ? `<div class="lead">WHY IT MATTERS</div><p class="why">${esc(p.bet)}</p>` : "") + `</div>`
+    : "";
+
+  const gate = p.gate
+    ? `<div class="gate" data-verdict="${p.gate === "fail" ? "fail" : "pass"}"><div class="lead">GATE &middot; ${p.gate === "fail" ? "<b>FAIL</b>" : "PASS"}`
+      + (p.gap_count ? ` (${p.gap_count} ${p.gap_count > 1 ? "gaps" : "gap"})` : "") + `</div>`
+      + (p.gate_next ? `<p class="why">${esc(p.gate_next)}</p>` : "") + `</div>`
+    : "";
+
+  const flags = p.waiting_count
+    ? `<div><div class="lead">WAITING ON YOU (${p.waiting_count})</div><ul class="flags"><li>`
+      + `<b>${p.waiting_count}</b>${p.waiting_count > 1 ? "decisions" : "decision"} on record. `
+      + `Open the full view to read them.</li></ul></div>`
+    : "";
+
+  const acts = [];
+  if (p.path_exists) acts.push('<button type="button" data-act="open">Open in VS Code</button>');
+  if (p.resume) acts.push('<button type="button" class="ghost" data-act="copy">Copy resume</button>');
+  acts.push('<button type="button" class="ghost" data-act="full">Full view</button>');
+
+  b.innerHTML = `<h2>${esc(p.name)}${badge}</h2><div class="line">${bits.join(" &middot; ")}</div>`
+    + body + card + story + proof + gate + sources + flags + `<div class="acts">${acts.join("")}</div>`;
+
+  // Source-row swatches carry the module colour, set through CSSOM because a
+  // style attribute would be blocked by the nonce policy.
+  b.querySelectorAll(".src .ic").forEach((n, i) => n.style.setProperty("background", src[i].c));
+
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const act = e.target.closest("button")?.dataset.act;
+    if (act === "open") launch(p.id);
+    else if (act === "copy") copy(p.resume);
+    else if (act === "full") go("/p/" + encodeURIComponent(p.id));
+  });
+
+  hive.appendChild(b);
+  document.querySelector(`.node[data-id="${CSS.escape(id)}"]`)?.classList.add("open");
+  placeBubble(id);
+  b.querySelector("button")?.focus();
+}
+
+function placeBubble(id) {
+  const b = document.getElementById("bubble");
+  const p = PROJECTS.find((x) => x.id === id);
+  if (!b || !p || p._cx == null) return;
+  const w = b.offsetWidth || 352, h = b.offsetHeight || 240;
+  const bw = hive.clientWidth, bh = hive.clientHeight;
+  const toLeft = p._cx + 40 + w > bw - 12;
+  let x = toLeft ? p._cx - w - 30 : p._cx + 30;
+  const y = Math.min(Math.max(p._cy - 42, 10), Math.max(10, bh - h - 12));
+  b.classList.toggle("left", toLeft);
+  b.classList.toggle("right", !toLeft);
+  b.style.setProperty("--bx", Math.max(10, x).toFixed(0) + "px");
+  b.style.setProperty("--by", y.toFixed(0) + "px");
+  b.style.setProperty("--ty", Math.min(Math.max(p._cy - y - 9, 14), h - 26).toFixed(0) + "px");
+  b.style.setProperty("--ox", toLeft ? "100%" : "0%");
+  b.style.setProperty("--oy", Math.min(Math.max(p._cy - y, 0), h).toFixed(0) + "px");
+}
+
+/* ----------------------------------------------------------------- actions */
+
+async function launch(id) {
+  try {
+    const r = await api("/api/open", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: id, token: TOKEN }),
+    });
+    const d = await r.json();
+    r.ok ? toast("Opened in VS Code") : toast(d.error || "Could not open", true);
+  } catch (e) { toast("Could not reach Product Library", true); }
+}
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast("Resume command copied"); }
+  catch (e) { toast("Copy blocked. " + text, true); }
+}
+
+/* ------------------------------------------------------------------ sheets */
+
+function closeSheet() { document.getElementById("sheet")?.remove(); }
+function sheet(title, html) {
+  closeSheet();
+  const s = document.createElement("div");
+  s.id = "sheet";
+  s.setAttribute("role", "dialog");
+  s.setAttribute("aria-label", title);
+  s.innerHTML = '<button class="close" type="button" aria-label="Close">&times;</button>'
+    + `<h2>${esc(title)}</h2>` + html;
+  s.querySelector(".close").addEventListener("click", () => go("/"));
+  s.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-act]");
+    if (!btn) return;
+    if (btn.dataset.act === "open") launch(btn.dataset.id);
+    if (btn.dataset.act === "copy") copy(btn.dataset.text);
+    if (btn.dataset.act === "goto") go("/p/" + encodeURIComponent(btn.dataset.id));
+  });
+  hive.appendChild(s);
+  return s;
+}
+const sec = (h, body) => `<section><h3>${h}</h3>${body}</section>`;
+const stat = (v, l) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`;
+
+// One history row in words: what this snapshot changed against the one before.
+function changesOf(a, b) {
+  if (!b) return ["first recorded" + (a.stage ? ": " + a.stage : "") + ", gate " + (a.gate || "none")];
+  const out = [], was = (v) => v == null || v === "" ? "none" : v;
+  if (a.gate !== b.gate) out.push(`gate ${was(b.gate)} → ${was(a.gate)}`);
+  if (a.drift !== b.drift) out.push(a.drift ? "went STALE" : "fresh again");
+  if (a.stage !== b.stage) out.push(`stage ${was(b.stage)} → ${was(a.stage)}`);
+  if (a.next_action !== b.next_action && a.next_action) out.push("next: " + a.next_action);
+  if (a.proof !== b.proof && a.proof) out.push("proof: " + a.proof);
+  if (a.subject !== b.subject && a.subject) out.push("commit: " + a.subject);
+  if (a.waiting_count !== b.waiting_count) out.push(`waiting on you ${b.waiting_count} → ${a.waiting_count}`);
+  if (a.blocker_count !== b.blocker_count) out.push(`blockers ${b.blocker_count} → ${a.blocker_count}`);
+  if (a.sessions > b.sessions) out.push(`+${a.sessions - b.sessions} ${a.sessions - b.sessions > 1 ? "sessions" : "session"}`);
+  if (a.latest_chapter !== b.latest_chapter && a.latest_chapter) out.push("chapter: " + a.latest_chapter);
+  if (a.branch !== b.branch) out.push(`branch ${was(b.branch)} → ${was(a.branch)}`);
+  return out.length ? out : ["details changed"];
+}
+
+// The sheets load async: by the time an answer arrives the user (or a fast
+// double PgDn) may have moved on, and a late sheet would open over the wrong page.
+const stillAt = (path) => location.pathname === path;
+
+async function projectSheet(id) {
+  const here = location.pathname;
+  let p;
+  // The history is asked for alongside, not after: one round trip, not two.
+  const hp = api("/api/history/" + encodeURIComponent(id)).then((r) => r.json()).catch(() => null);
+  try { p = await (await api("/api/project/" + encodeURIComponent(id))).json(); }
+  catch (e) { return stillAt(here) && sheet("Unavailable", '<p class="prose">Product Library could not read that project.</p>'); }
+  if (!stillAt(here)) return;
+  if (p.error) return sheet("Unknown project", `<p class="prose">${esc(p.error)}</p>`);
+
+  const st = p.state || {}, g = p.git || {};
+  const out = [];
+  out.push(`<div class="stats">${stat(p.sessions || 0, "sessions")}${stat(mb(p.bytes || 0), "transcripts")}`
+    + `${stat((p.waiting || []).length, "on you")}${stat(ago(p.last_activity), "last touched")}</div>`);
+  out.push('<div class="acts">'
+    + (p.path_exists ? `<button type="button" data-act="open" data-id="${esc(p.id)}">Open in VS Code</button>` : "")
+    + (p.resume ? `<button type="button" class="ghost" data-act="copy" data-text="${esc(p.resume)}">Copy resume</button>` : "")
+    + "</div>");
+  if (p.path) out.push(sec("PATH", `<div class="body">${esc(p.path)}</div>`));
+  if (p.note) out.push(sec("WHY IT LOOKS EMPTY", `<p class="prose">${esc(p.note)}</p>`));
+  if (p.drift) {
+    out.push(sec("STALE STATE", `<p class="prose">The latest ${esc(p.drift.by)} is `
+      + `${esc(p.drift.behind_hours)}h newer than session-state.md, so NEXT ACTION may describe `
+      + "a point the work has already moved past. Run /library-checkpoint to refresh it.</p>"));
+  }
+  if (p.gate) {
+    out.push(sec("GATE &middot; " + (p.gate.verdict === "fail" ? '<b class="fail">FAIL</b>' : "PASS"),
+      p.gate.gaps.length
+        ? '<ul class="flags">' + p.gate.gaps.map((g) =>
+            `<li class="${g.hard ? "" : "other"}">${esc(g.question)}${g.hard ? "" : " (soft)"}</li>`).join("") + "</ul>"
+        : '<p class="prose">Every check passes.</p>'));
+  }
+  if (st.next_action) out.push(sec("NEXT ACTION", `<div class="card prose">${esc(st.next_action)}</div>`));
+  if (st.for) out.push(sec("WHO IT'S FOR", `<div class="card prose">${esc(st.for)}</div>`));
+  if (st.bet) out.push(sec("WHY IT MATTERS", `<div class="card prose">${esc(st.bet)}</div>`));
+  if (st.stage) out.push(sec("STAGE", `<p class="prose">${esc(st.stage)}</p>`));
+  if (st.proof) out.push(sec("PROOF", `<div class="card prose">${esc(st.proof)}</div>`));
+  if (st.status) out.push(sec("STATUS", `<p class="prose">${esc(st.status)}</p>`));
+  if (st.current_task) out.push(sec("CURRENT TASK", `<div class="card prose">${esc(st.current_task)}</div>`));
+  if ((p.blockers || []).length) {
+    const own = new Set(p.waiting || []);
+    out.push(sec("BLOCKERS", '<ul class="flags">' + p.blockers.map((b) =>
+      `<li class="${own.has(b) ? "" : "other"}">${esc(b)}</li>`).join("") + "</ul>"));
+  }
+  // How it started vs where it is now, then Claude's chapters and what shipped.
+  if (p.origin) {
+    const now = (p.prompts || []).slice(-1)[0];
+    out.push(sec("HOW IT STARTED &rarr; WHERE IT IS NOW",
+      `<div class="card body"><b>${esc((p.origin.at || "").slice(0, 10))}</b> ${esc(p.origin.prompt)}</div>`
+      + (now && now !== p.origin.prompt ? `<div class="card body"><b>latest</b> ${esc(now)}</div>` : "")));
+  }
+  if ((p.chapters || []).length) {
+    out.push(sec(`CHAPTERS &middot; Claude's title for each session (${p.chapters.length})`,
+      '<ol class="chapters">' + p.chapters.map((c) =>
+        `<li><div class="ch"><span>${esc(c.title)}</span><span class="when">${esc((c.at || "").slice(0, 10))}`
+        + (c.session_id ? `<button type="button" class="readchat" data-chat="${esc(c.session_id)}" data-pid="${esc(p.id)}" data-title="${esc(c.title)}">Read</button>` : "")
+        + `</span></div></li>`).join("") + "</ol>"));
+  }
+  if ((p.prs || []).length) {
+    // URLs are https-only by the time they get here (_story_in drops the rest).
+    out.push(sec(`SHIPPED &middot; pull requests (${p.prs.length})`, p.prs.map((r) =>
+      `<div class="row"><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">#${esc(String(r.number || ""))} ${esc(r.repo || "")}</a>`
+      + `<span>${esc((r.at || "").slice(0, 10))}</span></div>`).join("")));
+  }
+  // The opt-in history (py library.py --snapshot): what changed, newest first.
+  const hist = await hp;
+  if (hist && Array.isArray(hist.rows)) {
+    const rows = hist.rows, n = rows.length;
+    out.push(sec(`HISTORY &middot; ${n ? n + (n > 1 ? " changes" : " change") : "not recorded"}`, n
+      ? rows.map((h, k) => `<div class="row"><div>${changesOf(h.record, (rows[k + 1] || {}).record).map(esc).join(" &middot; ")}</div>`
+        + `<span>${esc((h.at || "").slice(0, 16).replace("T", " "))}</span></div>`).join("")
+      : `<p class="prose">${hist.enabled ? "Recording. The next change shows here."
+        : "Start Product Library with <code>py library.py --snapshot</code> and every change to this project is kept, "
+          + "even after Claude Code clears its old chats."}</p>`));
+  }
+  if (g.branch) {
+    out.push(sec("GIT", `<div class="row"><b>${esc(g.branch)}</b><span>`
+      + (g.dirty ? g.dirty + " changed" : "clean") + "</span></div>"
+      + (g.subject ? `<div class="row">${esc(g.subject)}<span>${esc((g.committed || "").slice(0, 10))}</span></div>` : "")));
+  }
+  if ((p.prompts || []).length) {
+    out.push(sec(p.prompt_trivial ? "LAST PROMPT (says little)" : "RECENT PROMPTS",
+      p.prompts.slice().reverse().map((q) => `<div class="card body">${esc(q)}</div>`).join("")));
+  }
+  (p.logs || []).forEach((l) => {
+    out.push(sec(`${esc(l.name)} &middot; tail of ${mb(l.size)}`,
+      (l.heading ? `<div class="prose pname">${esc(l.heading)}</div>` : "")
+      + `<div class="body">${esc(l.tail)}</div>`));
+  });
+  if (p.memory) out.push(sec("MEMORY.md", `<div class="body">${esc(p.memory.slice(0, 4000))}</div>`));
+  if ((p.files || []).length) {
+    out.push(sec("STATE FILES", p.files.map((f) =>
+      `<div class="row">${esc(f.name)}<span>${mb(f.size)} &middot; ${esc((f.mtime || "").slice(0, 10))}</span></div>`).join("")));
+  }
+  if (stillAt(here)) sheet(p.name, out.join(""));
+}
+
+async function blockedSheet() {
+  const rows = await (await api("/api/blocked")).json();
+  if (!stillAt("/blocked")) return;
+  const mine = rows.filter((r) => r.waiting.length);
+  if (!mine.length) {
+    return sheet("Waiting on you", '<p class="prose">Nothing is waiting on you. '
+      + "Every blocker on record belongs to someone else.</p>");
+  }
+  sheet(mine.reduce((n, r) => n + r.waiting.length, 0) + " waiting on you",
+    mine.map((r) => `<section><h3>${esc(r.name)}</h3><ul class="flags">`
+      + r.waiting.map((w) => `<li>${esc(w)}</li>`).join("")
+      + `</ul><div class="acts"><button type="button" class="ghost" data-act="goto" data-id="${esc(r.id)}">`
+      + `Open ${esc(r.name)}</button></div></section>`).join(""));
+}
+
+// The portfolio view, ported from Product Harness's report: every project's
+// stage, gate verdict and the one question to answer next. Built from the
+// PROJECTS already loaded for the city, so it costs no extra scan.
+// Order: failing gates first (they need you), then stale, then passing, then
+// folders with no verdict at all (gone or unresolved).
+function reportSheet() {
+  const rank = (p) => p.gate === "fail" ? 0 : p.drift ? 1 : p.gate === "pass" ? 2 : 3;
+  const rows = PROJECTS.slice().sort((a, b) => rank(a) - rank(b)
+    || String(b.last_activity || "").localeCompare(String(a.last_activity || "")));
+  const n = (f) => PROJECTS.filter(f).length;
+  const verdict = (p) => p.gate === "fail" ? '<b class="fail">FAIL</b>'
+    : p.gate === "pass" ? "PASS" : "no verdict";
+  // The truth boundary: what this scan verified vs what is only someone's words.
+  const checks = PROJECTS.flatMap((p) => p.truth ? p.truth.checked : []);
+  const written = PROJECTS.reduce((s, p) => s + (p.truth ? p.truth.written.length : 0), 0);
+  const truthOf = (t) => !t ? "" : `<p class="prose"><b>Checked:</b> `
+    + t.checked.map((c) => `${esc(c.what)}: ${c.ok ? "yes" : '<b class="fail">no</b>'}`).join(" &middot; ")
+    + `</p><p class="prose"><b>Only written down:</b> ${t.written.length ? esc(t.written.join(", ")) : "nothing"}</p>`;
+  sheet("Report", `<div class="stats">${stat(n((p) => p.gate === "pass"), "pass")}`
+    + `${stat(n((p) => p.gate === "fail"), "fail")}${stat(n((p) => p.drift), "stale")}`
+    + `${stat(n((p) => p.has_state), "with state")}`
+    + `${stat(checks.filter((c) => c.ok).length + "/" + checks.length, "checks hold")}`
+    + `${stat(written, "only written")}</div>`
+    + '<p class="prose"><b>Checked</b> means this scan verified it: the state is newer than the work, '
+    + "a cited commit is in the repo, a quote is word for word in its file. <b>Only written down</b> "
+    + "is a filled-in line nothing checked. A checked line's other words are still only written.</p>"
+    + rows.map((p) => `<section class="rep" data-row="${esc(p.name)}"><h3>${esc(p.name)}</h3>`
+      // One left-hand element: .row is space-between flex, so loose text and
+      // the <b> would each become a flex item and spread across the row.
+      + `<div class="row"><div>${p.stage ? esc(p.stage) : "no stage"} &middot; GATE ${verdict(p)}`
+      + (p.gap_count ? ` (${p.gap_count})` : "") + (p.drift ? " &middot; STALE" : "")
+      + `</div><span>${esc(ago(p.last_activity))}</span></div>`
+      + (p.bet ? `<p class="prose"><b>Why:</b> ${esc(p.bet)}</p>` : "")
+      + (p.gate_next ? `<p class="prose">${esc(p.gate_next)}</p>` : "")
+      + truthOf(p.truth)
+      + `<div class="acts"><button type="button" class="ghost" data-act="goto" data-id="${esc(p.id)}">`
+      + `Open ${esc(p.name)}</button></div></section>`).join(""));
+}
+
+async function plansSheet() {
+  const rows = await (await api("/api/plans")).json();
+  if (!stillAt("/plans")) return;
+  if (!rows.length) return sheet("Plans", '<p class="prose">No plan files yet.</p>');
+  // Plans live in ~/.claude/plans with no project namespace, so they get their
+  // own shelf instead of being guessed onto a slab.
+  sheet("Plans", "<p class='prose'>Written plans, newest first. These are not tied to a project on disk.</p>"
+    + rows.map((p) => `<div class="row">${esc(p.title)}<span>${esc(p.mtime.slice(0, 10))}`
+      + ` &middot; ${mb(p.size)}</span></div>`).join(""));
+}
+
+/* ----------------------------------------------------------------- routing */
+
+function go(path, replace) {
+  history[replace ? "replaceState" : "pushState"]({}, "", path);
+  render();
+}
+function render() {
+  const path = location.pathname;
+  closeSheet();
+  document.getElementById("navplans").setAttribute("aria-current", path === "/plans" ? "page" : "false");
+  document.getElementById("navreport").setAttribute("aria-current", path === "/report" ? "page" : "false");
+  if (path.startsWith("/p/")) projectSheet(decodeURIComponent(path.slice(3)));
+  else if (path === "/blocked") blockedSheet();
+  else if (path === "/plans") plansSheet();
+  else if (path === "/report") reportSheet();
+}
+
+/* ------------------------------------------------------------------ filter */
+
+function applyFilter() {
+  const q = search.value.trim().toLowerCase();
+  let hits = 0;
+  document.querySelectorAll(".node").forEach((n) => {
+    const p = PROJECTS.find((x) => x.id === n.dataset.id);
+    const on = !q || (p && `${p.name || ""} ${p.path || ""} ${p.branch || ""} ${p.next_action || ""}`
+      .toLowerCase().includes(q));
+    n.classList.toggle("dim", !on);
+    if (on) hits++;
+  });
+  // Villagers carry data-id and fade WITH their cell. Without this a filtered
+  // villager would float at full strength over a cell dimmed to 0.13.
+  document.querySelectorAll("#scene .plaque,#scene .bot").forEach((n) => {
+    const p = PROJECTS.find((x) => x.id === n.dataset.id);
+    const on = !q || (p && `${p.name || ""} ${p.path || ""} ${p.branch || ""}`.toLowerCase().includes(q));
+    n.style.setProperty("opacity", on ? "1" : "0.13");
+  });
+  document.getElementById("empty")?.remove();
+  if (q && !hits) {
+    const e = document.createElement("div");
+    e.id = "empty";
+    e.innerHTML = `<b>Nothing matches &ldquo;${esc(search.value)}&rdquo;</b>`
+      + "Try a folder name, a branch, or a word from what you last asked for.";
+    hive.appendChild(e);
+  }
+}
+
+/* -------------------------------------------------------------------- data */
+
+
+/* -------------------------------------------- city: day/night, real clock */
+// Four palettes. DAY is the palette the hive was designed in, value for value,
+// so midday changes nothing and the other three are ramps away from it.
+// Dawn goes amber, dusk goes purple, night goes dark navy - and night also
+// lights every window (CSS keys that off data-tod).
+const SKY = {
+  night: { g0: "#060A1C", g0b: "#0A112D", g1: "#10183E", g2b: "#181D4E", g2: "#221F58",
+           sl: "#55567F", sr: "#43446C", ta: "#9A9EC6", tb: "#8287B4", slab: "#45466C", glow: 0.22 },
+  dawn:  { g0: "#2A0F2E", g0b: "#481A38", g1: "#783040", g2b: "#B45842", g2: "#DE8848",
+           sl: "#DDBDB4", sr: "#C29E9C", ta: "#FFF2E2", tb: "#F7DDCA", slab: "#7D6270", glow: 0.70 },
+  day:   { g0: "#1B0A3D", g0b: "#2A0C52", g1: "#3A0F6B", g2b: "#5C1675", g2: "#7A1E7E",
+           sl: "#C9C0DE", sr: "#A79BC9", ta: "#FFFFFF", tb: "#EFEAF7", slab: "#6E6482", glow: 1.00 },
+  dusk:  { g0: "#140932", g0b: "#290E4D", g1: "#441368", g2b: "#6C1A70", g2: "#962A6C",
+           sl: "#A897C6", sr: "#8979B0", ta: "#E8DFF5", tb: "#D0C3E7", slab: "#594C72", glow: 0.75 },
+};
+// [hour, palette] keys in local time, wrapping at 24. Between two keys the
+// palette is interpolated, so the scene drifts with the clock instead of
+// snapping at a boundary. The 30s poll re-runs layout(), and layout() calls
+// applySky(), so a whole day is covered without a timer of its own.
+const SKY_KEYS = [[0, "night"], [5, "night"], [6.5, "dawn"], [8.5, "day"],
+                  [16.5, "day"], [18.5, "dusk"], [20.5, "night"], [24, "night"]];
+const SKY_VARS = { g0: "--ground-0", g0b: "--ground-0b", g1: "--ground-1", g2b: "--ground-2b",
+                   g2: "--ground-2", sl: "--side-l", sr: "--side-r", ta: "--top-a", tb: "--top-b",
+                   slab: "--slabtop" };
+// A probe has to be able to stand the scene at any hour, or it only ever
+// measures the hour it happened to run at. window.POC_HOUR wins, then ?hour=.
+function hourNow() {
+  // isFinite, because typeof NaN is "number" and NaN reached the palette as #NaNNaNNaN.
+  if (typeof window.POC_HOUR === "number" && isFinite(window.POC_HOUR))
+    return ((window.POC_HOUR % 24) + 24) % 24;
+  const q = parseFloat(new URLSearchParams(location.search).get("hour"));
+  if (isFinite(q)) return ((q % 24) + 24) % 24;
+  const d = new Date();
+  return d.getHours() + d.getMinutes() / 60;
+}
+function skyAt(h) {
+  let i = 0;
+  while (i < SKY_KEYS.length - 2 && h >= SKY_KEYS[i + 1][0]) i++;
+  const [h0, a] = SKY_KEYS[i], [h1, b] = SKY_KEYS[i + 1];
+  const u = h1 > h0 ? (h - h0) / (h1 - h0) : 0;
+  return { u: u, a: a, b: b, phase: u < 0.5 ? a : b };
+}
+const mixHex = (x, y, u) => "#" + [1, 3, 5].map((k) => Math.round(
+  parseInt(x.substr(k, 2), 16) * (1 - u) + parseInt(y.substr(k, 2), 16) * u)
+  .toString(16).padStart(2, "0")).join("");
+function applySky() {
+  const h = hourNow(), s = skyAt(h), A = SKY[s.a], B = SKY[s.b];
+  for (const k in SKY_VARS) hive.style.setProperty(SKY_VARS[k], mixHex(A[k], B[k], s.u));
+  hive.style.setProperty("--tod-glow", (A.glow + (B.glow - A.glow) * s.u).toFixed(3));
+  hive.dataset.tod = s.phase;
+  const ck = document.querySelector("#rci .clock");
+  if (ck) {
+    const hh = Math.floor(h), mm = Math.floor((h - hh) * 60);
+    ck.textContent = String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0") + " " + s.phase;
+  }
+}
+
+// The rail costs the hive about 270px, which narrows every cell, and the meta
+// line under a front-row label is LIVE text whose width moves with the data
+// (trap 12). A pitch threshold cannot know how wide "27m ago - 23 sess - 81MB"
+// is, so measure instead: drop a meta line wherever it actually reaches another
+// label. Read live per check, because each removal shrinks a rect.
+function dropMetaClashes() {
+  const nodes = [...nodesEl.querySelectorAll(".node")];
+  nodes.forEach((n) => {
+    const m = n.querySelector(".meta");
+    if (!m) return;
+    const r = m.getBoundingClientRect();
+    const hit = nodes.some((o) => {
+      if (o === n) return false;
+      const q = o.getBoundingClientRect();
+      return r.right + 4 > q.left && r.left - 4 < q.right && r.bottom + 2 > q.top && r.top - 2 < q.bottom;
+    });
+    if (hit) m.remove();
+  });
+}
+
+/* ---------------------------------------------- city: avenues and traffic */
+// Two avenues, each a line of CONSTANT DEPTH (x+y), which in this projection
+// is a perfectly screen-horizontal line. One runs in the band gap between the
+// dormant and live combs, one along the front of the live comb. A vehicle on an
+// avenue never changes depth, so its painter slot is one bucketOf() per trip -
+// the same depth-bucket insertion the villagers use, with no per-frame re-sort.
+//
+// Point on an avenue: x = D/2 + t, y = D/2 - t. Then x - y = 2t, so t is the
+// comb's own lateral index `a` - one unit of t is exactly one cell across.
+const RW = 0.40;            // road width, in depth units
+const ROAD_REACH = 0.88;    // fit(): reach below a front-comb centre, in SC units
+let AVE = null;             // { front, gap, t0, t1 } - rebuilt by every layout()
+const VEHS = new Map();     // vehicle id -> model. Survives layout(), like VILLS.
+let VEH_N = 0;
+
+function avenues() {
+  const all = PROJECTS.concat(VACANT);
+  if (!all.length) return null;
+  const D = (p) => p._x0 + p._y0;
+  const live = all.filter((p) => p._b === 0), dorm = all.filter((p) => p._b === 1);
+  const lat = all.map((p) => (p._x0 - p._y0) / 2);
+  return {
+    // HEX_H * 2 is how far a hexagon reaches forward in depth units.
+    front: live.length ? Math.max(...live.map(D)) + HEX_H * 2 + 0.12 + RW / 2 : null,
+    gap: live.length && dorm.length
+      ? (Math.max(...dorm.map(D)) + Math.min(...live.map(D))) / 2 : null,
+    t0: Math.min(...lat) - 1.1, t1: Math.max(...lat) + 1.1,
+  };
+}
+
+function drawRoads() {
+  const g = el("g", "roads");
+  AVE = avenues();
+  if (!AVE) return g;
+  const q = (t, d) => iso(d / 2 + t, d / 2 - t, 0);
+  const seg = (a, b) => "M" + a[0] + " " + a[1] + "L" + b[0] + " " + b[1];
+  [AVE.gap, AVE.front].forEach((D) => {
+    if (D == null) return;
+    const a = D - RW / 2, b = D + RW / 2;
+    g.appendChild(el("polygon", "road", {
+      points: pts([q(AVE.t0, a), q(AVE.t1, a), q(AVE.t1, b), q(AVE.t0, b)]) }));
+    g.appendChild(el("path", "curb", { d: seg(q(AVE.t0, a), q(AVE.t1, a)) }));
+    g.appendChild(el("path", "curb", { d: seg(q(AVE.t0, b), q(AVE.t1, b)) }));
+    g.appendChild(el("path", "lane", { d: seg(q(AVE.t0, D), q(AVE.t1, D)) }));
+  });
+  return g;
+}
+
+// Pixel-art side views, the same grammar as the villagers: one character per
+// pixel, crispEdges, scaled by the villager's own px. Front is on the RIGHT;
+// a vehicle heading left is mirrored. 'l' is the headlight, which night lights.
+const CAR = [
+  "...#####...",
+  "..#oo#oo#..",
+  "#########ll",
+  "###########",
+  ".ww.....ww.",
+];
+const TRUCK = [
+  "########.....",
+  "########.cc..",
+  "########.cooc",
+  "########.cccl",
+  "ccccccccccccc",
+  ".ww.ww....ww.",
+];
+const CAR_COLS = ["#3D7BFF", "#1FBF75", "#E8C25A", "#FF6B5A", "#E6E1F2", "#8B5CF6"];
+function pix(map, fills) {
+  const W = map[0].length, H = map.length;
+  let s = "";
+  for (let y = 0; y < H; y++) {
+    let x = 0;
+    while (x < W) {
+      const ch = map[y][x];
+      let n = 1;
+      while (x + n < W && map[y][x + n] === ch) n++;
+      if (ch !== ".") {
+        s += '<rect x="' + (x - W / 2) + '" y="' + (y - H) + '" width="' + n + '" height="1"'
+          + (ch === "l" ? ' class="hl"' : ' fill="' + fills[ch] + '"') + "/>";
+      }
+      x += n;
+    }
+  }
+  return s;
+}
+function vehNode(v) {
+  const g = el("g", "veh " + v.kind, { "shape-rendering": "crispEdges" });
+  g.dataset.veh = v.id;
+  g.innerHTML = v.kind === "truck"
+    ? pix(TRUCK, { "#": "#F2B33D", c: "#D4785A", o: "#9FD3FF", w: "#17121F" })
+    : pix(CAR, { "#": v.col, o: "#9FD3FF", w: "#17121F" });
+  return g;
+}
+
+// An endpoint is a project id, resolved LIVE against the current scan every
+// frame (the villagers' rule: place() re-slots the comb on a poll, so a
+// coordinate captured at dispatch can belong to another project seconds
+// later), or "L"/"R" for the two ends of the avenue.
+function endT(e) {
+  if (!AVE) return null;
+  if (typeof e === "number") return e;                 // a rebased leg's start, see relayoutVehicles()
+  if (e === "L") return AVE.t0 + 0.25;
+  if (e === "R") return AVE.t1 - 0.25;
+  const p = PROJECTS.find((q) => q.id === e);
+  return p && p._x0 !== undefined ? (p._x0 - p._y0) / 2 : null;
+}
+function vehPos(v, now) {
+  const L = v.legs[v.si], D = AVE && AVE[v.ave];
+  if (!L || D == null) return null;
+  const ta = endT(L.a), tb = endT(L.b);
+  if (ta == null || tb == null) return null;
+  const u = Math.min(1, Math.max(0, (now - v.t0) / L.dur));
+  const e = L.lin ? u : u * u * (3 - 2 * u);   // a rebased leg is already moving: no ease-in
+  return { t: ta + (tb - ta) * e, D: D, u: u, dir: tb > ta ? 1 : tb < ta ? -1 : v.dir };
+}
+function placeVeh(v, r) {
+  v.dir = r.dir;
+  // Two lanes: heading right keeps to the near lane, heading left the far one.
+  const lane = r.D + (v.dir > 0 ? RW / 4 : -RW / 4);
+  const [sx, sy] = iso(lane / 2 + r.t, lane / 2 - r.t, 0);
+  const px = SC > 26 ? 3 : 2;
+  v.sx = sx; v.sy = sy; v.lt = r.t;
+  v.el.setAttribute("transform", "translate(" + sx.toFixed(1) + "," + sy.toFixed(1)
+    + ") scale(" + (v.dir * px) + "," + px + ")");
+  const b = bucketOf(lane);
+  if (b === v.bucket) return;
+  v.bucket = b;
+  scene.insertBefore(v.el, CELLG[b] || null);
+}
+function dropVeh(v) { v.el.remove(); VEHS.delete(v.id); }
+
+// Called from tick(), the one rAF loop. Returns how many vehicles are still on
+// the road, so tick() keeps itself alive for them and dies when they are gone.
+function stepVehicles(now) {
+  VEHS.forEach((v) => {
+    const r = vehPos(v, now);
+    if (!r) { dropVeh(v); return; }
+    placeVeh(v, r);
+    if (r.u < 1) return;
+    v.si++; v.t0 = now;
+    if (v.si >= v.legs.length) dropVeh(v);
+  });
+  return VEHS.size;
+}
+// layout() detaches every <g> in the scene, vehicles included, and rebuilds
+// CELLG. Re-project each vehicle from its model and re-insert it by bucket.
+//
+// A moving leg is REBASED first: it restarts from where the vehicle actually
+// is (its last lateral t) toward the live destination. Without this a re-slot -
+// and every context switch re-slots the comb, which is exactly when cars run -
+// moved the destination under a car mid-leg and the interpolation snapped it
+// 138px sideways in one frame. The villagers carry the same delta for the same
+// reason (tick(), "carried with its cell"). The avenue's own depth still follows
+// the comb, which is right: the road moved, and the car is on the road.
+function relayoutVehicles() {
+  const now = performance.now();
+  VEHS.forEach((v) => {
+    v.bucket = -1;
+    const L = v.legs[v.si];
+    if (L && L.a !== L.b && v.lt != null) {
+      const tb = endT(L.b);
+      if (tb != null) {
+        v.legs[v.si] = { a: v.lt, b: L.b, dur: Math.max(400, Math.abs(tb - v.lt) * v.per), lin: true };
+        v.t0 = now;
+      }
+    }
+    const r = vehPos(v, now);
+    if (r) placeVeh(v, r); else dropVeh(v);
+  });
+}
+
+// kind "car": drive from one project to another along the front avenue, idle,
+// gone. kind "truck": from an end of the band-gap avenue to a construction site,
+// unload, and back out. Exposed so a probe can force one instead of waiting.
+function spawnVehicle(kind, from, to) {
+  if (RM.matches || !AVE) return null;
+  const ave = kind === "truck" && AVE.gap != null ? "gap" : "front";
+  if (AVE[ave] == null) return null;
+  const ta = endT(from), tb = endT(to);
+  if (ta == null || tb == null) return null;
+  const per = kind === "truck" ? 1500 : 1000;          // ms per cell
+  const run = Math.max(1400, Math.abs(tb - ta) * per);
+  const legs = kind === "truck"
+    ? [{ a: from, b: to, dur: run }, { a: to, b: to, dur: 4000 }, { a: to, b: from, dur: run }]
+    : [{ a: from, b: to, dur: run }, { a: to, b: to, dur: 1800 }];
+  let h = 0;
+  for (const c of String(to)) h = (h * 31 + c.charCodeAt(0)) | 0;
+  const v = { id: "veh" + (++VEH_N), kind: kind, ave: ave, legs: legs, si: 0,
+              t0: performance.now(), dir: 1, bucket: -1, per: per,
+              col: CAR_COLS[Math.abs(h) % CAR_COLS.length] };
+  v.el = vehNode(v);
+  VEHS.set(v.id, v);
+  const r = vehPos(v, v.t0);
+  if (!r) { VEHS.delete(v.id); return null; }
+  placeVeh(v, r);
+  if (!RAF) RAF = requestAnimationFrame(tick);
+  return v;
+}
+
+// Traffic is a SIGNAL, not ambience. Cars = context switches: every project in
+// the live comb touched in the last 24 hours is a stop, and a car runs between
+// two of them - half the time the real last switch (the project before the one
+// you are in now, to the one you are in now), otherwise any pair of today's
+// stops. More projects touched today, more cars, capped at 3. Trucks = supply
+// runs to construction sites (a live project with session-state, the same test
+// that raises a crane), capped at 2. Called from dispatch(), after its
+// reduced-motion gate, on the existing 1.5s interval: clearing TRAFFIC stops
+// spawning, every vehicle finishes its trip, and the rAF loop dies as before.
+function trafficNow() {
+  const now = Date.now();
+  const recent = PROJECTS.filter((p) => p._b === 0 && p.last_activity
+      && now - new Date(p.last_activity) < DAY)
+    .sort((a, b) => new Date(b.last_activity) - new Date(a.last_activity));
+  const sites = PROJECTS.filter((p) => p._t === 1 && p.has_state);
+  return { recent: recent, sites: sites };
+}
+function spawnVehicles() {
+  if (!AVE) return;
+  const tr = trafficNow();
+  let cars = 0, trucks = 0;
+  VEHS.forEach((v) => { if (v.kind === "truck") trucks++; else cars++; });
+  const R = tr.recent;
+  if (R.length > 1 && cars < Math.min(3, R.length - 1) && Math.random() < 0.4) {
+    let a = R[1], b = R[0];
+    if (Math.random() < 0.5) {
+      a = R[Math.floor(Math.random() * R.length)];
+      const rest = R.filter((p) => p !== a);
+      b = rest[Math.floor(Math.random() * rest.length)];
+    }
+    spawnVehicle("car", a.id, b.id);
+  }
+  if (tr.sites.length && trucks < Math.min(2, tr.sites.length) && Math.random() < 0.25) {
+    const s = tr.sites[Math.floor(Math.random() * tr.sites.length)];
+    const t = endT(s.id);
+    if (t != null) spawnVehicle("truck", t - AVE.t0 < AVE.t1 - t ? "L" : "R", s.id);
+  }
+}
+
+/* --------------------------------------------- city: the RCI meter, re-mapped */
+function buildMeter() {
+  let m = document.getElementById("rci");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "rci";
+    hive.appendChild(m);
+  }
+  const W = PROJECTS.filter((p) => p.waiting_count).length;
+  const A = PROJECTS.filter((p) => !p.waiting_count && tier(p) !== 3).length;
+  const D = PROJECTS.length - W - A;
+  const pop = PROJECTS.reduce((n, p) => n + (p.sessions || 0), 0);
+  const top = Math.max(1, W, A, D);
+  const bars = [["W", W, "var(--clay)", "waiting on you"], ["A", A, "var(--m-green)", "active"],
+                ["D", D, LOT_ROOF, "dormant"]];
+  m.innerHTML = '<div class="bars">' + bars.map((b) =>
+      '<div class="bar" title="' + b[1] + " " + b[3] + '"><s>' + b[1] + "</s><i></i><b>" + b[0] + "</b></div>"
+    ).join("") + '</div><div class="pop"><span>POP</span><b>' + pop + '</b><span class="clock"></span></div>';
+  m.querySelectorAll(".bar").forEach((n, i) => {
+    n.style.setProperty("--v", (bars[i][1] / top).toFixed(3));
+    n.style.setProperty("--c", bars[i][2]);
+  });
+  m.setAttribute("role", "img");
+  m.setAttribute("aria-label", W + " projects waiting on you, " + A + " active, " + D
+    + " dormant; population " + pop + " sessions");
+  m.title = "POP = " + pop + " sessions across " + PROJECTS.length + " projects";
+  applySky();
+}
+
+/* ----------------------------------------------------- city: the roster panel */
+// Built in JS rather than spliced into the markup, so this POC adds exactly one
+// insertion point to index.html instead of three.
+// The rail collapses to a 44px strip. The window does not resize when it does,
+// so the resize listener never fires: the city is re-laid out here, once the
+// width transition has FINISHED, so fit() reads the final hive width rather
+// than a frame from the middle of the animation. The transition's own
+// `finished` promise is the signal. A fixed backstop timer was tried first and
+// it was wrong: on a busy main thread it fired before a 240ms transition had
+// ended and laid the city out 1px off. getAnimations() flushes style, so the
+// transition exists by the time it is asked for. No transition - reduced
+// motion, or a hidden rail - means lay out at once. A toggle mid-transition
+// cancels the old one; its promise rejects, and the catch still lays out.
+function railToggle() {
+  const box = document.getElementById("roster");
+  const shut = !box.classList.contains("shut");
+  box.classList.toggle("shut", shut);
+  box.querySelector(".rhead").setAttribute("aria-expanded", String(!shut));
+  const runs = box.getAnimations().filter((a) => a.transitionProperty === "width");
+  if (!runs.length) { layout(); return; }
+  Promise.all(runs.map((a) => a.finished.catch(() => null))).then(() => layout());
+}
+
+function buildRoster() {
+  let box = document.getElementById("roster");
+  if (!box) {
+    box = document.createElement("aside");
+    box.id = "roster";
+    box.setAttribute("aria-label", "Project list");
+    document.getElementById("app").appendChild(box);
+    // The rail takes its width out of #hive, so the hive has to be laid out
+    // again the first time it appears. load() calls layout() BEFORE this.
+    // Synchronously, not via requestAnimationFrame: reduced motion promises no
+    // rAF is ever scheduled, and layout() reading clientWidth forces the grid.
+    layout();
+  }
+  // The 30s poll rebuilds the list. Keep the reader's place in it: the scroll
+  // offset, and keyboard focus on the same project's row.
+  const keepTop = box.querySelector(".rlist") ? box.querySelector(".rlist").scrollTop : 0;
+  const keepId = box.contains(document.activeElement) && document.activeElement.dataset
+    ? document.activeElement.dataset.id : null;
+  const keepHead = document.activeElement && document.activeElement.classList.contains("rhead");
+  const rows = PROJECTS.slice().sort(function (a, b) {
+    // Waiting on you first, then most recent. Same priority the messengers use.
+    if (!!b.waiting_count - !!a.waiting_count) return !!b.waiting_count - !!a.waiting_count;
+    return new Date(b.last_activity || 0) - new Date(a.last_activity || 0);
+  });
+  const esc2 = typeof esc === "function" ? esc : function (t) { return t; };
+  const shut = box.classList.contains("shut");
+  let html = '<button class="rhead" type="button" aria-expanded="' + !shut + '" title="Show or hide the project list">'
+    + '<span class="rl">Projects <span class="rmeta">' + rows.length + '</span></span>'
+    + '<span class="caret">&#9656;</span></button><div class="rlist">';
+  rows.forEach(function (p) {
+    html += '<button class="r" data-id="' + esc2(p.id) + '">'
+      + '<span class="rdot"></span>'
+      + '<span class="rnm">' + esc2(p.name) + '</span>'
+      + (p.waiting_count ? '<span class="rflag">' + p.waiting_count + '</span>' : '')
+      + '<span class="rmeta">' + ago(p.last_activity) + '</span></button>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+  // CSP blocks inline style attributes; the dot colour goes in through the CSSOM.
+  box.querySelectorAll("button.r").forEach((b, i) => b.querySelector(".rdot").style.setProperty("background", roofOf(rows[i])));
+  box.querySelector(".rlist").scrollTop = keepTop;
+  if (keepId) box.querySelector('button.r[data-id="' + CSS.escape(keepId) + '"]')?.focus({ preventScroll: true });
+  else if (keepHead) box.querySelector(".rhead").focus({ preventScroll: true });
+  box.querySelector(".rhead").addEventListener("click", railToggle);
+  box.querySelectorAll("button.r").forEach(function (b) {
+    b.addEventListener("click", function (e) {
+      e.stopPropagation();
+      toggle(b.dataset.id);
+    });
+  });
+}
+
+async function load() {
+  let res, data;
+  try { res = await api("/api/projects"); data = await res.json(); }
+  catch (e) { toast("Product Library could not read the registry", true); return; }
+  // A dead token after a server restart is handled in api(): it reloads.
+  if (!Array.isArray(data)) { toast("Product Library could not read the registry", true); return; }
+  PROJECTS = data;
+
+  const waiting = data.reduce((n, p) => n + (p.waiting_count || 0), 0);
+  const live = data.filter((p) => tier(p) === 1).length;
+  document.getElementById("waitn").textContent = waiting;
+  document.getElementById("waiting").className = "waiting" + (waiting ? "" : " none");
+  document.getElementById("tally").textContent =
+    `${data.length} projects · ${live} active this week`;
+
+  layout();
+  buildMeter();
+  buildRoster();
+  const first = !entered;
+  if (!entered) {
+    entered = true;
+    hive.classList.add("enter");
+    // Runs once. Route changes reuse the same canvas, so the colony is never
+    // rebuilt and never replays its arrival.
+    setTimeout(() => hive.classList.remove("enter"), 2800);
+    // Traffic starts after the arrival animation, and only once a real scan has
+    // rendered. A cold scan of the corpus takes seconds, so a fixed delay from
+    // script load could have villagers walking while a probe is still counting
+    // them at home - trap 15, from the other end.
+    // The handle is kept because the loop's own idle-out cannot be OBSERVED
+    // while a dispatcher keeps feeding it; the harness stops traffic and then
+    // asserts RAF returns to 0.
+    setTimeout(() => { TRAFFIC = setInterval(dispatch, 1500); }, 3000);
+    // Turning reduced motion ON mid-flight has to park the village too, not
+    // just stop new trips. Position is driven by JS now, so the CSS media block
+    // cannot reach it: without this a villager keeps walking for up to a full
+    // round trip after the user has asked for no motion. layout() re-homes
+    // anyone whose trip was just cancelled, and tick() then finds nobody busy
+    // and lets the loop die on its next frame.
+    RM.addEventListener("change", () => {
+      if (!RM.matches) return;
+      VILLS.forEach((v) => { v.trip = null; v.si = 0; v.kind = null; });
+      VEHS.forEach(dropVeh);
+      // Phase 3 parks too. The reduced-motion CSS block already stops the wave
+      // ANIMATING, but it does not remove .greet, so the raised arm would stay
+      // frozen mid-wave - a pose the user never chose, and one that never goes
+      // away because updateProx() bails under RM before it can clear anything.
+      // clearProx() runs before layout() so the classes are gone whether or not
+      // a villager's node survives the rebuild.
+      clearProx();
+      layout();
+    });
+  }
+  // Only the first load routes. A poll re-render closed and reopened whatever
+  // sheet was up every 30s: the full view visibly stuttered. An open
+  // sheet refreshes on its next navigation or F5 instead.
+  if (first) render();
+}
+
+/* ---------------------------------------------------------------- bindings */
+
+document.getElementById("waiting").addEventListener("click", () => go("/blocked"));
+document.getElementById("navplans").addEventListener("click", () => go("/plans"));
+document.getElementById("navreport").addEventListener("click", () => go("/report"));
+search.addEventListener("input", applyFilter);
+window.addEventListener("popstate", render);
+hive.addEventListener("click", closeBubble);
+scene.addEventListener("click", (e) => {
+  const g = e.target.closest(".plaque");
+  if (g) { e.stopPropagation(); toggle(g.dataset.id); }
+});
+addEventListener("resize", () => { clearTimeout(window._rz); window._rz = setTimeout(layout, 130); });
+
+// Phase 3. ONE mousemove for the whole village, on the window rather than per
+// villager: a listener per sprite would be 24 of them, would miss every gap
+// between cells, and would fire on a node that layout() is about to replace.
+addEventListener("mousemove", onMove, { passive: true });
+// Leaving the window must drop the state. Without this the last villager the
+// cursor passed keeps its eyes locked on a pointer that is no longer on screen,
+// and a greeter waves at nothing for as long as the tab stays open.
+document.addEventListener("mouseleave", () => { CUR_IN = false; clearProx(); });
+// No scroll listener, and that is deliberate rather than an omission. An earlier
+// version registered one "because the page scrolls at narrow widths"; it does not.
+// body is overflow:hidden at height:100%, #app is height:100% and #hive is
+// flex:1;overflow:hidden, and nothing in the file calls scrollTo/scrollIntoView or
+// touches scrollTop. The only scrollable box is #sheet, and scroll does not bubble
+// from an element to window, so the listener could never have fired. SRECT is
+// invalidated by layout(), which is the only thing that moves the scene box.
+
+addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (document.getElementById("sheet")) go("/");
+    else if (openId) closeBubble();
+    else if (search.value) { search.value = ""; applyFilter(); }
+    return;
+  }
+  const typing = e.target === search || e.target.tagName === "INPUT";
+  if (e.key === "/" && !typing) { e.preventDefault(); search.focus(); return; }
+  if (typing || e.ctrlKey || e.altKey || e.metaKey) return;
+  if (e.key >= "1" && e.key <= "9") {
+    const p = PROJECTS[Number(e.key) - 1];
+    if (p) openBubble(p.id);
+  } else if (e.key === "Enter" && openId) {
+    const p = PROJECTS.find((x) => x.id === openId);
+    if (p && p.path_exists) launch(p.id);
+  }
+});
+
+load();
+// ponytail: 30s poll rather than SSE. A warm scan is about a millisecond and
+// nothing here changes while you are looking at it except by your own hand.
+// Held in a named global for the same reason TRAFFIC is: so a harness can stop it.
+// A probe run that outlasts 30s otherwise has every villager node rebuilt under it
+// mid-assertion - layout() re-runs place()/fit(), replaces v.el and resets
+// greet/peek - which reads as a flaky suite rather than as the poll it is.
+let POLL = setInterval(load, 30000);
+
+// The legend remembers whether it was minimised. Per viewer, so localStorage.
+{
+  const lg = document.getElementById("legend");
+  try { if (localStorage.getItem("library-legend") === "shut") lg.open = false; } catch (e) { /* private mode */ }
+  lg.addEventListener("toggle", () => {
+    try { localStorage.setItem("library-legend", lg.open ? "open" : "shut"); } catch (e) { /* private mode */ }
+  });
+  // A- / A+ step the text size; the panel and its swatches scale with it (em).
+  const SIZES = [11, 12, 14, 16, 19, 22];
+  let z = 1;
+  try { z = Math.max(0, Math.min(SIZES.length - 1, Number(localStorage.getItem("library-legend-z") ?? 1))); } catch (e) { /* private mode */ }
+  const setZ = () => lg.style.setProperty("--lgz", SIZES[z] + "px");   // CSSOM: CSP allows it
+  setZ();
+  lg.querySelector(".lgz").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    e.preventDefault();                        // a click inside <summary> would also fold the legend
+    z = Math.max(0, Math.min(SIZES.length - 1, z + Number(b.dataset.z)));
+    setZ();
+    try { localStorage.setItem("library-legend-z", String(z)); } catch (e2) { /* private mode */ }
+  });
+}
+
+// A past chat, read-only: the chapter list's Read buttons open it in #chat.
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-chat]");
+  if (!b) return;
+  const dlg = document.getElementById("chat"), log = dlg.querySelector(".log");
+  dlg.querySelector("header b").textContent = b.dataset.title || "Chat";
+  log.innerHTML = '<p class="note">Reading the chat...</p>';
+  if (!dlg.open) dlg.showModal();
+  let data;
+  try { data = await (await api("/api/chat/" + encodeURIComponent(b.dataset.pid) + "/" + encodeURIComponent(b.dataset.chat))).json(); }
+  catch (err) { data = null; }
+  if (!data || !Array.isArray(data.messages)) { log.innerHTML = '<p class="note">This chat could not be read.</p>'; return; }
+  log.innerHTML = (data.cut ? `<p class="note">${data.cut} older messages not shown</p>` : "")
+    + (data.messages.length ? data.messages.map((m) => `<div class="m ${esc(m.role)}">${esc(m.text)}</div>`).join("")
+       : '<p class="note">Nothing was said in this chat.</p>');
+  log.lastElementChild?.scrollIntoView({ block: "end" });
+});
+document.querySelector("#chat [data-close]").addEventListener("click", () => document.getElementById("chat").close());
+</script>
+</body>
+</html>

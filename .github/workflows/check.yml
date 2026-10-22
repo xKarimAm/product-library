@@ -1,0 +1,45 @@
+# Every PR and every push to main: the same checks a push needs by hand.
+# Stdlib only, so there is nothing to install beyond Python itself.
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a PR cancels its older run; main runs are never cancelled.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      # Actions pinned to a commit, not a movable tag. Dependabot bumps them.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: selftest
+        run: python library.py --selftest
+      - name: sync script selftest
+        run: python tools/sync_public.py --selftest
+      - name: sample projects build and check out
+        run: python sample/make_sample.py
+      - name: leakcheck
+        # Private words live in a repo secret, never in the repo. Without the
+        # secret (a fork, the public copy) the built-in rules still run.
+        env:
+          LEAK_WORDS: ${{ secrets.LEAK_WORDS }}
+        run: python tools/leakcheck.py

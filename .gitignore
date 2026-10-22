@@ -1,0 +1,16 @@
+# Real project scans and anything baked from them - never commit these.
+tools/poc_data*.json
+tools/export_repo.py
+# Test debris
+tools/cprof_*/
+tools/*.png
+*.png
+__pycache__/
+*.bak
+.claude/*
+!.claude/launch.json
+.remember/
+!docs/city-night.png
+
+# Built by tools/build_poc.py, never committed
+poc_city.html

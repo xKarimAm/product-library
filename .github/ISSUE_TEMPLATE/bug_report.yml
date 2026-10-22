@@ -1,0 +1,82 @@
+name: Bug report
+description: Something in Product Library does not work as described
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One problem per issue. Say what you saw, not what you guess. If you don't know an
+        answer, write `NOT_ENOUGH_INFO`. Security problems go to the Security tab, not here.
+
+  - type: checkboxes
+    id: before-submitting
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched open and closed issues for the same problem.
+          required: true
+        - label: I removed real project names, home-folder paths, transcript text and the session token.
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Setup or starting the server
+        - A project is missing or in the wrong place
+        - Gate, STALE or proof check is wrong
+        - The city or a page looks wrong
+        - History (--snapshot)
+        - /library-checkpoint skill
+        - Sample city
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened
+      description: The actual result. Paste the command you ran and any error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps
+      description: The shortest steps you actually ran. Does it happen with the sample city too?
+      placeholder: |
+        1. py sample/make_sample.py --serve
+        2. Open http://127.0.0.1:7777
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Point at the README line or behaviour you expected, if there is one.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD` in your clone.
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: OS and Python
+      placeholder: Windows 11, Python 3.12
+    validations:
+      required: true
