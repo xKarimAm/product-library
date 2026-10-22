@@ -23,6 +23,9 @@
   --clay:#D4785A; --clay-lite:#EDA184; --clay-dark:#B05B41; --clay-rgb:212,120,90;
   --eye:#111111;
   --cream:#F4F1EA; --ink:#2B2621; --ink-soft:#6E6459; --ink-far:#5A4D6B;
+  /* Text on the cream card and sheets: each is 4.5:1 or better on their darkest
+     cream (#EFEBE0). The brighter --m-red and --clay-dark failed there at 10-13px. */
+  --label:#6B6156; --fail-ink:#C2263A; --clay-ink:#93472F;
   --rule:rgba(43,38,33,.12);
   --display:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
   --text:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
@@ -228,7 +231,7 @@ header{
   border-radius:var(--r-pill);background:#FFF3C4;color:#7A4E00;box-shadow:inset 0 0 0 1px #D9A21B;
 }
 #bubble .gate{margin-top:12px}
-#bubble .gate .lead b{color:var(--m-red)}
+#bubble .gate .lead b{color:var(--fail-ink)}
 .meta{
   margin-top:3px;font:400 10px var(--mono);color:var(--ink-soft);
   white-space:nowrap;padding:1px 8px;border-radius:var(--r-pill);
@@ -448,11 +451,11 @@ header{
 }
 #bubble .badge.blocked{background:var(--m-red);color:#fff}
 #bubble .badge.paused{background:var(--clay);color:#fff}
-#bubble .badge.active{background:var(--m-green);color:#fff}
+#bubble .badge.active{background:#13804F;color:#fff}   /* --m-green under white text was 2.4:1 */
 /* Stage is where the work sits (discover..ship), not its health: outlined, so it never reads as a status. */
 #bubble .badge.stage{background:none;color:#5B4C86;box-shadow:inset 0 0 0 1px #B9AFCF}
 #bubble .line{margin:5px 0 12px;font:400 11px var(--mono);color:var(--ink-soft)}
-#bubble .lead{font:600 10px var(--display);letter-spacing:.11em;color:#8A7F72;margin-bottom:4px}
+#bubble .lead{font:600 10px var(--display);letter-spacing:.11em;color:var(--label);margin-bottom:4px}
 #bubble .say{margin:0;font-size:13.2px;line-height:1.5;overflow:hidden;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:6}
 #bubble .say.mono{font:400 12px/1.5 var(--mono);white-space:pre-wrap}
@@ -512,8 +515,8 @@ header{
 #sheet .close{position:absolute;top:15px;right:20px;color:var(--ink-soft);font-size:22px;line-height:1}
 #sheet .close:hover{color:var(--ink)}
 #sheet section{margin-top:22px}
-#sheet h3{margin:0 0 8px;font:600 10px var(--display);letter-spacing:.13em;color:#8A7F72}
-#sheet b.fail{color:var(--m-red)}
+#sheet h3{margin:0 0 8px;font:600 10px var(--display);letter-spacing:.13em;color:var(--label)}
+#sheet b.fail{color:var(--fail-ink)}
 #sheet .body{white-space:pre-wrap;font:400 12.4px/1.6 var(--mono);color:#4A423A}
 #sheet .prose{font-size:13.4px;line-height:1.6}
 #sheet .card{background:#FBF8F1;border:1px solid var(--rule);border-radius:10px;padding:13px 15px;margin-bottom:9px}
@@ -531,7 +534,7 @@ header{
 #sheet .acts{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap}
 #sheet .acts button{padding:10px 16px;border-radius:10px;font-weight:600;font-size:13px;background:var(--ink);color:var(--cream)}
 #sheet .acts button.ghost{background:none;color:var(--ink);box-shadow:inset 0 0 0 1px #D9D3C6}
-.pname{color:var(--clay-dark);font-weight:600}
+.pname{color:var(--clay-ink);font-weight:600}
 
 /* ------------------------------------------------------- toast, empty state */
 #toast{
@@ -2474,7 +2477,25 @@ async function copy(text) {
 
 /* ------------------------------------------------------------------ sheets */
 
-function closeSheet() { document.getElementById("sheet")?.remove(); }
+// Focus: a sheet takes focus when it opens and the city behind it goes inert, so
+// Tab cannot wander through the buildings it covers (the header and rail stay
+// usable, so it is not modal). Back on "/", focus returns to what opened it, or
+// to that project's building when the card that held the button is gone.
+let sheetReturn = null;
+function rememberFocus() {
+  if (sheetReturn) return;          // sheet to sheet keeps the first opener
+  const a = document.activeElement;
+  sheetReturn = { el: a, id: openId || a?.dataset?.id };
+}
+function returnFocus() {
+  const r = sheetReturn;
+  sheetReturn = null;
+  const el = r && (r.el?.isConnected && r.el !== document.body ? r.el
+    : r.id && document.querySelector(`.node[data-id="${CSS.escape(r.id)}"]`));
+  el?.focus({ preventScroll: true });
+}
+function cityInert(on) { [...hive.children].forEach((c) => { if (c.id !== "sheet") c.inert = on; }); }
+function closeSheet() { document.getElementById("sheet")?.remove(); cityInert(false); }
 function sheet(title, html) {
   closeSheet();
   const s = document.createElement("div");
@@ -2492,6 +2513,9 @@ function sheet(title, html) {
     if (btn.dataset.act === "goto") go("/p/" + encodeURIComponent(btn.dataset.id));
   });
   hive.appendChild(s);
+  cityInert(true);
+  s.tabIndex = -1;                  // focusable, so a screen reader announces the dialog
+  s.focus({ preventScroll: true });
   return s;
 }
 const sec = (h, body) => `<section><h3>${h}</h3>${body}</section>`;
@@ -2684,6 +2708,7 @@ async function plansSheet() {
 /* ----------------------------------------------------------------- routing */
 
 function go(path, replace) {
+  if (path !== "/") rememberFocus();
   history[replace ? "replaceState" : "pushState"]({}, "", path);
   render();
 }
@@ -2696,6 +2721,7 @@ function render() {
   else if (path === "/blocked") blockedSheet();
   else if (path === "/plans") plansSheet();
   else if (path === "/report") reportSheet();
+  else returnFocus();
 }
 
 /* ------------------------------------------------------------------ filter */
@@ -3282,8 +3308,16 @@ let POLL = setInterval(load, 30000);
 // The legend remembers whether it was minimised. Per viewer, so localStorage.
 {
   const lg = document.getElementById("legend");
-  try { if (localStorage.getItem("library-legend") === "shut") lg.open = false; } catch (e) { /* private mode */ }
+  let saved = null;
+  try { saved = localStorage.getItem("library-legend"); } catch (e) { /* private mode */ }
+  // Nothing saved yet: start folded on a phone or narrow tablet, where the open
+  // legend covers half the city. That fold is not the viewer's choice, so the
+  // toggle event it fires is not saved.
+  let quiet = saved === null && matchMedia("(max-width:900px)").matches;
+  if (saved === "shut" || quiet) lg.open = false;
   lg.addEventListener("toggle", () => {
+    if (quiet) { quiet = false; return; }
+    if (!PROJECTS.length) return;   // the empty city folds it too; also not a choice
     try { localStorage.setItem("library-legend", lg.open ? "open" : "shut"); } catch (e) { /* private mode */ }
   });
   // A- / A+ step the text size; the panel and its swatches scale with it (em).

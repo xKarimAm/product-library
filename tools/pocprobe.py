@@ -130,8 +130,8 @@ try:
       return {appR:a.right, railR:r.right, railL:r.left, hiveR:h.right, railTop:r.top, hiveTop:h.top,
               railBot:r.bottom, vh:innerHeight, lastBot:last.bottom, listBot:lr.bottom,
               rows:L.querySelectorAll('button.r').length, proj:PROJECTS.length,
-              legend:!!document.querySelector('#roster .rfoot'),
-              hiveLegend:getComputedStyle(document.querySelector('#hive>.legend')).display};})())""")
+              legends:document.querySelectorAll('#legend').length,
+              oldLegend:!!document.querySelector('#roster .rfoot, #hive>.legend, #roster #legend')};})())""")
     print("  ", r)
     check(abs(r["railR"] - r["appR"]) < 1 and r["hiveR"] <= r["railL"] + 0.5,
           "rail is docked right and the hive ends where it begins")
@@ -139,7 +139,7 @@ try:
           "rail is full height under the header")
     check(r["rows"] == r["proj"] and r["lastBot"] <= r["listBot"] + 0.5,
           "every project has a row and the last row is not clipped")
-    check(r["legend"] and r["hiveLegend"] == "none", "legend lives in the rail, once")
+    check(r["legends"] == 1 and not r["oldLegend"], "the legend is one floating panel, not in the rail or the hive")
     # The 30s poll rebuilds the list; a keyboard user must keep their place.
     # Scroll to whatever the list can actually scroll (a short list cannot reach
     # 120px) and require the poll to keep exactly that.

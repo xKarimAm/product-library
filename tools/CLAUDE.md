@@ -10,7 +10,7 @@ Chrome DevTools Protocol client). Run them from the repo root.
 | `mutate.py` | breaks `library.py` on purpose, one change at a time, and requires `--selftest` to fail | no |
 | `http_battery.py` | HTTP-layer security checks over raw sockets (Host, token, path traversal, body limits) | starts its own |
 | `drive.py` | tiny Chrome DevTools Protocol driver; other scripts import it. `attach()` pins `prefers-reduced-motion` to no-preference unless a `--reduced` run passes `--force-prefers-reduced-motion`, so results don't depend on the Windows "Animation effects" setting | - |
-| `routes.py` | interaction and client-route checks against the hive DOM | yes |
+| `routes.py` | interaction, route, search and sheet-focus checks on the sample city (`habit-tracker`); exits 1 on failure | yes, the sample city (`py sample/make_sample.py --serve`) |
 | `shot.py` | screenshot plus DOM probe of the Product Library page | yes |
 | `phase1.py` / `phase2.py` / `phase3.py` | acceptance checks for the villager phases (traffic, idle poses, cursor reactions) | yes |
 | `err.py` | catches page JS errors before any script runs | yes |
